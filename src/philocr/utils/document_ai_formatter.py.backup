@@ -1,0 +1,135 @@
+"""
+Simple, Reliable Document AI Text Formatter
+
+This module focuses on reliable text extraction from any Document AI JSON format.
+It prioritizes getting the text content displayed correctly over advanced formatting.
+"""
+import logging
+from typing import Dict, Any, List
+import os
+import shutil
+
+logger = logging.getLogger('document_ai_app')
+
+# Create a backup of this file if it doesn't exist already
+current_file = os.path.abspath(__file__)
+backup_file = current_file + '.backup'
+if not os.path.exists(backup_file):
+    try:
+        shutil.copy2(current_file, backup_file)
+        logger.info(f"Created backup of original formatter at {backup_file}")
+    except Exception as e:
+        logger.error(f"Failed to create backup: {e}")
+
+# Extremely simplified formatter - only extracts text and creates basic HTML
+def format_document_ai_json(json_data: Dict[str, Any], debug_mode=False, use_simple_formatting=True) -> str:
+    """
+    Convert Document AI JSON to very basic HTML with minimal formatting.
+    
+    Args:
+        json_data (dict): Document AI JSON data
+        debug_mode (bool): Whether to include debug information
+        use_simple_formatting (bool): Ignored
+        
+    Returns:
+        str: HTML with minimal formatting
+    """
+    logger.info("Starting extremely simplified document formatting")
+    
+    if not json_data:
+        logger.error("No JSON data provided")
+        return "<html><body><p>No data available</p></body></html>"
+    
+    # Extract raw text only - no fancy formatting
+    raw_text = extract_text_only(json_data)
+    
+    logger.info(f"Extracted raw text ({len(raw_text)} chars)")
+    
+    # Convert to very simple HTML
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Document Text</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        pre {{ white-space: pre-wrap; font-family: monospace; }}
+    </style>
+</head>
+<body>
+    <h1>Document Text</h1>
+    <pre>{html_escape(raw_text)}</pre>
+</body>
+</html>"""
+    
+    return html
+
+def html_escape(text: str) -> str:
+    """Basic HTML escaping to prevent rendering issues"""
+    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+def extract_text_only(json_data: Dict[str, Any]) -> str:
+    """
+    Extract text from Document AI JSON with the simplest possible approach.
+    No special formatting or structure is maintained, just extracts all text.
+    
+    Args:
+        json_data (dict): Document AI JSON data
+        
+    Returns:
+        str: Raw extracted text
+    """
+    all_text_parts = []
+    
+    # Try direct text field at root level
+    if "text" in json_data and json_data["text"]:
+        all_text_parts.append(json_data["text"])
+        logger.info("Found text at root level")
+    
+    # Try document_data text
+    if "document_data" in json_data:
+        doc_data = json_data["document_data"]
+        
+        # Try direct text in document_data
+        if "text" in doc_data and doc_data["text"]:
+            all_text_parts.append(doc_data["text"])
+            logger.info("Found text in document_data")
+        
+        # Try pages and blocks
+        if "pages" in doc_data:
+            logger.info(f"Processing {len(doc_data['pages'])} pages")
+            
+            for page_idx, page in enumerate(doc_data["pages"]):
+                page_num = page.get("page_number", page_idx + 1)
+                
+                # Add a page marker
+                all_text_parts.append(f"\n\n----- Page {page_num} -----\n\n")
+                
+                # Try page text
+                if "text" in page and page["text"]:
+                    all_text_parts.append(page["text"])
+                    logger.info(f"Added text from page {page_num}")
+                
+                # Try blocks (both standard and layout formats)
+                if "blocks" in page:
+                    block_texts = []
+                    
+                    for block in page["blocks"]:
+                        # Standard format
+                        if "text" in block and block["text"]:
+                            block_texts.append(block["text"])
+                        
+                        # Google Document AI layout format
+                        elif "layout" in block and isinstance(block["layout"], dict):
+                            if "text" in block["layout"] and block["layout"]["text"]:
+                                block_texts.append(block["layout"]["text"])
+                    
+                    if block_texts:
+                        all_text_parts.append(" ".join(block_texts))
+                        logger.info(f"Added text from {len(block_texts)} blocks on page {page_num}")
+    
+    # Join all parts with appropriate spacing
+    if all_text_parts:
+        return "\n".join(all_text_parts)
+    else:
+        return "No text content found in document." 

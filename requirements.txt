@@ -1,0 +1,20 @@
+google-cloud-documentai>=2.13.0
+PyQt6>=6.5.0
+PyMuPDF>=1.21.0
+pytest>=7.0.0
+pytest-mock>=3.10.0
+pytest-cov>=4.0.0
+python-dotenv>=1.0.0
+pyinstaller>=5.5.0
+structlog>=23.2.0  # Structured logging 
+ijson>=3.2.0  # For memory-efficient processing of large JSON files
+psutil>=5.9.0  # For memory usage monitoring and management
+pyyaml>=6.0.0  # For YAML configuration files (optional but recommended - falls back to JSON if not available)
+black>=23.1.0  # For code formatting
+isort>=5.12.0  # For import sorting
+ruff>=0.0.60  # For linting
+pyright>=1.1.0  # For strict type checking (replaces MyPy - better for Python 3.12+)
+radon>=5.1.0  # For code complexity analysis
+git+https://github.com/python-qt-tools/PyQt6-stubs.git  # PyQt6 type stubs
+# Optional dependencies
+# ijson>=3.2.0  # For memory-efficient processing of large JSON files 

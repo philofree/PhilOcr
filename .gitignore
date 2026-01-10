@@ -1,0 +1,173 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Python virtual environments
+venv/
+build_env/
+.venv/
+env/
+ENV/
+.env/
+dev_env/
+.python-version
+
+# PyInstaller build directories and files
+build/
+dist/
+*.spec
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build logs and temporary files
+build_log.txt
+*.log
+.coverage.*
+coverage/
+.cache/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+
+# Backup directories
+backup_*/
+
+# Environment files (keep templates only)
+ENV.local
+*.env
+.env
+.envrc
+.direnv
+# Add any other env file patterns
+.env.*
+.envs/
+credentials*.json
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.ropeproject
+.spyderproject
+.spyproject
+.vs/
+
+# OS specific
+*~
+Thumbs.db
+
+# Distribution / packaging
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.eggs/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyQt specific
+*_ui.py
+*.qm
+*.qrc.py
+
+# Temporary files
+temp-*
+tem_*
+
+# Test files and output
+test_output/
+*_test_output/
+test_files/
+*_test_files/
+
+# Output file formats
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!*.config.json
+!manifest.json
+*.docx
+*.html
+!index.html
+!templates/*.html
+
+# Specific directories with large files
+doc_ai_json_samples/
+json_files/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.env/
+.venv/
+venv.backup*/
+venv.*/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ignore secrets and credentials
+secrets/
+
+# Ignore guardians directory
+guardians/
+work_reports/
+
+# Guardian violation reports (should be in guardians/framework/core/logs)
+god_class_violations.csv
+god_class_violations.json

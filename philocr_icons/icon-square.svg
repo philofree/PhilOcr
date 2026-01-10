@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="2" y="2" width="96" height="96" rx="4" fill="#f4f1ec"/>
+  <text x="50" y="68"
+        text-anchor="middle"
+        font-size="72"
+        font-family="Gentium Plus, serif"
+        fill="#1b1b1b">φ</text>
+</svg>
