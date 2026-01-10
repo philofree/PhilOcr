@@ -6,7 +6,8 @@ temp file cleanup and window close operations.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from PyQt6.QtGui import QCloseEvent
 
@@ -69,9 +70,7 @@ class LifecycleManager:
             if cleaned > 0:
                 logger.info("temp_files_cleaned_on_exit", files_cleaned=cleaned)
 
-            old_cleaned, _old_failed = (
-                self.temp_cleaner.clean_old_temp_files(24)
-            )
+            old_cleaned, _old_failed = self.temp_cleaner.clean_old_temp_files(24)
             if old_cleaned > 0:
                 logger.info(
                     "temp_files_cleaned_old_on_exit",

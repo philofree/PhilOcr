@@ -6,16 +6,13 @@ and about dialogs, extracting this responsibility from MainWindow.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QDialog, QWidget
 
 from philocr.ui.dialogs import AboutDialog, CredentialsDialog
 from philocr.utils.env_utils import load_env_file
-
-if TYPE_CHECKING:
-    pass
 
 
 class DialogManager:

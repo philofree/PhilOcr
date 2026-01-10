@@ -6,7 +6,8 @@ factory methods from MainWindow to improve cohesion.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from philocr.ui.configuration_manager import ConfigurationManager
 from philocr.ui.file_operations_manager import FileOperationsManager
@@ -15,11 +16,7 @@ from philocr.ui.worker_callbacks import WorkerCallbacks
 from philocr.ui.worker_manager import WorkerManager
 
 if TYPE_CHECKING:
-    from PyQt6.QtWidgets import (
-        QProgressBar,
-        QTextEdit,
-        QWidget,
-    )
+    from PyQt6.QtWidgets import QProgressBar, QTextEdit, QWidget
 
     from philocr.utils.temp_cleaner import TempFileCleaner
 
@@ -33,10 +30,10 @@ class MainWindowManagerFactory:
 
     @staticmethod
     def create_format_display_manager(
-        text_edit: "QTextEdit",  # noqa: F821
-        html_preview: "QTextEdit",  # noqa: F821
-        markdown_preview: "QTextEdit",  # noqa: F821
-        json_preview: "QTextEdit",  # noqa: F821
+        text_edit: QTextEdit,  # noqa: F821
+        html_preview: QTextEdit,  # noqa: F821
+        markdown_preview: QTextEdit,  # noqa: F821
+        json_preview: QTextEdit,  # noqa: F821
         on_save_buttons_enable: Callable[[], None],
     ) -> FormatDisplayManager:
         """Create and configure the format display manager.
@@ -61,9 +58,9 @@ class MainWindowManagerFactory:
 
     @staticmethod
     def create_file_operations_manager(
-        parent_widget: "QWidget",
-        current_result_json_getter: Callable[[], Optional[Dict[str, Any]]],
-        current_result_json_setter: Callable[[Optional[Dict[str, Any]]], None],
+        parent_widget: QWidget,
+        current_result_json_getter: Callable[[], dict[str, Any] | None],
+        current_result_json_setter: Callable[[dict[str, Any] | None], None],
         format_display_manager: FormatDisplayManager,
         on_status_update: Callable[[str], None],
         on_save_buttons_enable: Callable[[], None],
@@ -92,14 +89,14 @@ class MainWindowManagerFactory:
 
     @staticmethod
     def create_worker_manager(
-        temp_cleaner: "TempFileCleaner",  # noqa: F821
-        progress_bar: "QProgressBar",  # noqa: F821
+        temp_cleaner: TempFileCleaner,  # noqa: F821
+        progress_bar: QProgressBar,  # noqa: F821
         on_text_update: Callable[[str], None],
         on_status_update: Callable[[str], None],
         on_error: Callable[[str], None],
         on_finished: Callable[[bool], None],
-        on_json_ready: Callable[[Dict[str, Any]], None],
-        on_button_state_change: Callable[[Dict[str, bool]], None],
+        on_json_ready: Callable[[dict[str, Any]], None],
+        on_button_state_change: Callable[[dict[str, bool]], None],
         on_preview_clear: Callable[[], None],
     ) -> WorkerManager:
         """Create and configure the worker manager.
@@ -135,7 +132,7 @@ class MainWindowManagerFactory:
 
     @staticmethod
     def create_configuration_manager(
-        parent_widget: "QWidget",
+        parent_widget: QWidget,
         on_config_error: Callable[[str], None],
         on_settings_requested: Callable[[], None],
     ) -> ConfigurationManager:

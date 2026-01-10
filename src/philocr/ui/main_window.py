@@ -9,15 +9,12 @@ from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStatusBar
 
 from philocr.ui.dialog_manager import DialogManager
-from philocr.ui.file_operations_manager import FileOperationsManager
-from philocr.ui.format_display_manager import FormatDisplayManager
 from philocr.ui.lifecycle_manager import LifecycleManager
 from philocr.ui.main_window_coordinator import MainWindowCoordinator
 from philocr.ui.main_window_factory import MainWindowManagerFactory
 from philocr.ui.main_window_state_manager import MainWindowStateManager
 from philocr.ui.ui_builder import UICallbacks
-from philocr.ui.ui_composer import MainWindowUI, MainWindowUIComposer
-from philocr.ui.worker_manager import WorkerManager
+from philocr.ui.ui_composer import MainWindowUIComposer
 from philocr.utils.markdown_debug_service import MarkdownDebugService
 from philocr.utils.markdown_preview_helper import MAX_PREVIEW_LENGTH
 from philocr.utils.temp_cleaner import TempFileCleaner
@@ -130,19 +127,15 @@ class MainWindow(QMainWindow):
             json_preview=self.ui.json_preview,
             on_save_buttons_enable=self.state_manager.enable_save_buttons,
         )
-        self.file_operations_manager = (
-            factory.create_file_operations_manager(
-                parent_widget=self,
-                current_result_json_getter=lambda: self.current_result_json,
-                current_result_json_setter=lambda x: setattr(
-                    self, "current_result_json", x
-                ),
-                format_display_manager=self.format_display_manager,
-                on_status_update=self.update_status,
-                on_save_buttons_enable=(
-                    self.state_manager.enable_save_buttons
-                ),
-            )
+        self.file_operations_manager = factory.create_file_operations_manager(
+            parent_widget=self,
+            current_result_json_getter=lambda: self.current_result_json,
+            current_result_json_setter=lambda x: setattr(
+                self, "current_result_json", x
+            ),
+            format_display_manager=self.format_display_manager,
+            on_status_update=self.update_status,
+            on_save_buttons_enable=(self.state_manager.enable_save_buttons),
         )
         self.worker_manager = factory.create_worker_manager(
             temp_cleaner=self.temp_cleaner,
@@ -293,9 +286,7 @@ class MainWindow(QMainWindow):
 
         result = MarkdownDebugService.run_debug_test(MAX_PREVIEW_LENGTH)
 
-        self.format_display_manager.set_full_markdown_content(
-            result.full_markdown
-        )
+        self.format_display_manager.set_full_markdown_content(result.full_markdown)
         self.ui.markdown_preview.setPlainText(result.display_content)
 
         # Switch to markdown tab
@@ -310,8 +301,7 @@ class MainWindow(QMainWindow):
             _ = QMessageBox.information(
                 self,
                 "Markdown Debug Test",
-                "Markdown debug test completed. See the Markdown tab for "
-                "results.",
+                "Markdown debug test completed. See the Markdown tab for " "results.",
             )
         elif result.error_message:
             self.show_error(result.error_message)
