@@ -7,7 +7,6 @@ for the MainWindow, extracting UI setup logic from MainWindow.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
 
 from PyQt6.QtWidgets import (
     QLabel,
@@ -20,9 +19,6 @@ from PyQt6.QtWidgets import (
 )
 
 from philocr.ui.ui_builder import UIBuilder, UICallbacks
-
-if TYPE_CHECKING:
-    pass
 
 
 @dataclass
@@ -175,9 +171,7 @@ Note:
         header_frame = self.ui_builder.create_header_section()
         main_layout.addWidget(header_frame)
 
-    def _setup_buttons(
-        self, main_layout: QVBoxLayout
-    ) -> dict[str, QPushButton]:
+    def _setup_buttons(self, main_layout: QVBoxLayout) -> dict[str, QPushButton]:
         """Set up button section.
 
         Args:

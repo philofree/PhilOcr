@@ -6,15 +6,10 @@ preview clearing, and state resets.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from PyQt6.QtWidgets import (
-        QLabel,
-        QProgressBar,
-        QPushButton,
-        QTextEdit,
-    )
+    from PyQt6.QtWidgets import QLabel, QProgressBar, QPushButton, QTextEdit
 
 
 class MainWindowStateManager:
@@ -26,13 +21,13 @@ class MainWindowStateManager:
 
     def __init__(
         self,
-        buttons: Dict[str, "QPushButton"],
-        text_edit: "QTextEdit",
-        html_preview: "QTextEdit",
-        json_preview: "QTextEdit",
-        markdown_preview: "QTextEdit",
-        progress_bar: "QProgressBar",
-        status_label: "QLabel",
+        buttons: dict[str, QPushButton],
+        text_edit: QTextEdit,
+        html_preview: QTextEdit,
+        json_preview: QTextEdit,
+        markdown_preview: QTextEdit,
+        progress_bar: QProgressBar,
+        status_label: QLabel,
         coordinator: Any,  # MainWindowCoordinator
     ) -> None:
         """Initialize the State Manager.
@@ -56,7 +51,7 @@ class MainWindowStateManager:
         self.status_label = status_label
         self.coordinator = coordinator
 
-    def set_button_states(self, states: Dict[str, bool]) -> None:
+    def set_button_states(self, states: dict[str, bool]) -> None:
         """Set button enabled states.
 
         Args:
@@ -80,9 +75,7 @@ class MainWindowStateManager:
     def clear_previews(self) -> None:
         """Clear all preview displays with processing message."""
         self.text_edit.setPlainText("Processing...")
-        self.html_preview.setHtml(
-            "<html><body><p>Processing...</p></body></html>"
-        )
+        self.html_preview.setHtml("<html><body><p>Processing...</p></body></html>")
         self.json_preview.setPlainText("")
 
     def reset_to_initial_state(self) -> None:
