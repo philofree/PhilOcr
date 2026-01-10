@@ -1,0 +1,484 @@
+# PHILOCR VERIFICATION & SNAGGING-SHAKEDOWN DOCTRINE
+# The Scientific Method for Software: BUILD → WIRE → VERIFY → COMPLETE
+#
+# Version: 2.1.0 (Adapted for PhilOcr)
+# Date: 2026-01-10
+#
+# Cross-references:
+#   - rules_strucured_logging.md (FAIL FAST patterns + exception logging)
+#   - src/philocr/utils/error_handler.py (exception handling patterns)
+#   - src/philocr/utils/logging_config.py (structured logging configuration)
+
+################################################################################
+# CRITICAL RULES (READ THIS FIRST)
+################################################################################
+
+ABSOLUTE_REQUIREMENTS:
+  file_naming: "verif_*.py (NEVER test_*.py - guardian blocks test_* files)"
+  zero_mocking: "NO Mock, MagicMock, patch, @patch, AsyncMock - ZERO EXCEPTIONS"
+  all_exceptions_logged: "EVERY exception MUST be logged before propagation"
+  real_components_only: ["Google Document AI API", "PyQt6 UI", "filesystem", "network", "telemetry", "PDF processing"]
+  
+NOTE_CURRENT_STATE: |
+  PhilOcr currently uses pytest with test_*.py naming convention. This doctrine
+  recommends transitioning to verif_*.py naming for whole-system verification.
+  Both approaches can coexist during transition, but new verification should
+  follow verif_*.py naming and zero-mocking principles.
+
+THE_CORE_PRINCIPLE:
+  scientific_method: |
+    Verifs are EXPERIMENTS, not logical proofs.
+    1. Hypothesis: "System should work"
+    2. Experiment: Run REAL system with REAL data
+    3. Observation: Capture empirical evidence (telemetry, state changes)
+    4. Conclusion: Does evidence prove it works?
+
+  impossibility_argument: |
+    You CANNOT verify X by mocking X.
+    Mocking = circular proof: "My mock returns what I told it → proves nothing"
+
+    Formula One Principle: You don't mock fuel transfer, you observe real fuel
+    flowing into real tank. Same for Google Document AI, PDF processing,
+    filesystem, network. OCR verification requires REAL API calls with REAL
+    documents to verify the system actually extracts Greek text correctly.
+
+################################################################################
+# DOCTRINE & PHILOSOPHY
+################################################################################
+
+metadata:
+  name: "Verification & Snagging-Shakedown Doctrine"
+  version: "2.1.0"
+  adapted_from: "Sentinel verification doctrine"
+  foundation: "The Scientific Method - experimental verification, not theoretical proof"
+
+doctrine: |
+  PhilOcr uses VERIFS, not tests. Verification means running the REAL system
+  on REAL PDFs with REAL Greek text under REAL conditions with complete telemetry.
+
+  The only question: does the assembled OCR system actually extract Greek text
+  correctly from scanned documents?
+
+  Correctness is established by examining what the system produces when
+  operating on real scholarly editions, not by inspecting code structure.
+
+  Method: observe outcomes, measure behavior, draw conclusions from evidence.
+  For OCR: verify actual text extraction, structure preservation, Unicode handling,
+  and output format correctness with real Document AI responses.
+
+philosophy:
+  core_truths:
+    - "Code not running in production doesn't exist"
+    - "Specifications without wiring are fiction"
+    - "The system's actual state is the only source of truth"
+
+  failure_definition: |
+    Observable reality doesn't match expectation = system failure.
+    These are DEFECTS, not "test failures."
+    Snagging-shakedown finds them. Snagging list records them.
+
+terminology:
+  banned: ["test", "unit test", "integration test", "test suite", "test case"]
+  use_instead: ["verif", "verification", "shakedown", "proof of life", "check (for guardians)"]
+  rationale: "Vocabulary shapes thought - part-centric terms prevent whole-system reasoning"
+
+################################################################################
+# THE FOUR-PHASE IMPLEMENTATION METHOD
+################################################################################
+
+phases:
+  # Phase 1 ───────────────────────────────────────────────────────────────────
+  build:
+    purpose: "Create the code that will run in production"
+
+    requirements:
+      - "File exists at specified path"
+      - "File is syntactically valid"
+      - "File can be imported/loaded without errors"
+      - "Functions and classes match specification"
+
+    evidence:
+      - "File listing shows the file exists"
+      - "Import/load succeeds without errors"
+      - "Entry points are callable"
+
+    failure_mode: |
+      Specification describes a component.
+      Component does not exist in any file.
+      → BUILD INCOMPLETE
+
+  # Phase 2 ───────────────────────────────────────────────────────────────────
+  wire:
+    purpose: "Connect the built code to production entry points"
+
+    entry_point_examples:
+      - "PyQt6 UI file selection → on file chosen"
+      - "Batch processing CLI → on directory processed"
+      - "PDF drop zone → on file dropped"
+      - "Command-line invocation → python -m src.philocr.main"
+      - "Worker thread → on processing started"
+
+    wiring_standard: |
+      The built code IS CALLED when the entry point fires.
+
+      Not: "The built code exists and could theoretically be called."
+      But: "The built code IS called when I trigger the entry point."
+
+    verification_method:
+      - "Add logging to the new code path"
+      - "Trigger the entry point"
+      - "Observe the log entry"
+      - "If the log entry doesn't appear → WIRING INCOMPLETE"
+
+    failure_mode: |
+      New code exists and is correct.
+      Entry point still calls old code (or nothing).
+      → WIRE INCOMPLETE (code exists but isn't connected)
+
+  # Phase 3 ───────────────────────────────────────────────────────────────────
+  snagging_shakedown:
+    purpose: "Systematically examine the completed system for defects"
+
+    definition: |
+      Systematic evaluation where the application is operated as an end user
+      would, to identify defects, missing functionality, broken workflows, and
+      fit-and-finish problems. Conducted throughout development and before release.
+
+    what_it_is: |
+      Hands-on examination under real conditions. Like a shakedown cruise:
+      take the ship out and see what falls off. The actual system, actually running.
+
+    analogy: |
+      Builder walking through a finished bathroom: knocking tiles to hear if
+      any sound hollow, twisting fittings to see if they're loose, turning the
+      boiler on/off/on, pulling on the bannisters. Physical examination of the
+      real thing, not hypothetical analysis.
+
+    standard_scenarios:
+      happy_path: "Process a standard scanned PDF of Greek text → correct output"
+      lifecycle: "Load PDF → Process → Save output → Verify → Cleanup temp files"
+      edge_cases: |
+        Empty PDF, corrupted PDF, password-protected PDF, very large file (>200MB),
+        malformed Document AI response, rapid file selection, Unicode edge cases
+      offline_recovery: "Stop processing mid-way, restart → handles partial state"
+      load: |
+        Large scholarly editions (2000+ pages), batch processing multiple files,
+        concurrent UI operations, memory pressure with large files
+      ocr_specific: |
+        Polytonic Greek preservation, line number exclusion, footnote separation,
+        header detection, indentation preservation, page break handling
+
+    output: |
+      The snagging list: defects found during shakedown.
+      Empty list → proceed to completion
+      Critical/major items → fix before proceeding
+      Minor items → document and decide
+
+  # Phase 4 ───────────────────────────────────────────────────────────────────
+  completion:
+    purpose: "Confirm the work is finished and defect-free"
+
+    criteria:
+      required:
+        - "BUILD: Code exists on disk and can be executed"
+        - "WIRE: Code is called by production entry points"
+        - "SNAGGING-SHAKEDOWN: Examination found no critical/major defects"
+        - "SNAGGING LIST: All items resolved or accepted"
+
+      not_sufficient:
+        - "Specification is written"
+        - "Code review approved"
+        - "Documentation complete"
+        - "All tests pass"
+
+    evidence:
+      - "File listing showing built code exists"
+      - "Logs showing wiring is active"
+      - "Queries/commands showing correct system state"
+      - "Snagging list showing no unresolved critical/major defects"
+
+################################################################################
+# FORBIDDEN vs REQUIRED PATTERNS
+################################################################################
+
+FORBIDDEN:
+  naming: "test_*.py, *_test.py"
+  imports: "from unittest.mock import Mock, patch, MagicMock, AsyncMock"
+  decorators: "@patch('src.module.Component')"
+  mocking: "mock_db = Mock(); mock_api.return_value = 'fake'"
+  unlogged_exceptions: "Exception handlers without logger.error/critical calls"
+
+REQUIRED:
+  naming: "verif_pdf_processing.py, verif_greek_text_extraction.py, verif_markdown_output.py"
+  real_operations: |
+    ```python
+    from pathlib import Path
+    from philocr.utils.logging_config import get_logger
+    from philocr.processing.document_ai import process_document
+    from philocr.utils.document_ai_formatter import format_document_response
+
+    logger = get_logger(__name__)
+
+    def verif_pdf_to_markdown():
+        """Verify end-to-end PDF processing with real Document AI API."""
+        test_pdf = Path("scans/test_greek_text.pdf")  # Real file
+        
+        logger.info("verif.starting", file_path=str(test_pdf))
+        
+        # Real Document AI API call (no mocking)
+        response = process_document(test_pdf)  # Real API call
+        
+        # Real formatting operation
+        formatted = format_document_response(response)  # Real processing
+        
+        # Verify actual Greek text extraction
+        assert "ἐν" in formatted or "οὐ" in formatted, "Greek text not extracted"
+        
+        logger.info(
+            "verif.completed",
+            status="VERIFIED",
+            characters_extracted=len(formatted),
+            pages_processed=len(response.pages) if hasattr(response, "pages") else 0,
+        )
+        return formatted  # Empirical evidence
+    ```
+
+verif_definition: |
+  verif (n., v.) — Real-world confirmation that the assembled system functions.
+  Obtained by operating the system and observing behavior; proof of life.
+
+  Every verif: runs against REAL system, uses REAL inputs/outputs, produces
+  empirical evidence, confirms end-to-end function, uses ZERO mocking, logs
+  ALL exceptions, named verif_*.py.
+
+################################################################################
+# WHY TRADITIONAL TESTING FAILS
+################################################################################
+
+why_traditional_testing_fails:
+  part_corpse_problem: |
+    A system can satisfy every part-level assertion while being nonfunctional.
+    Micro-checks cannot distinguish living systems from dead assemblies.
+
+  integration_blindness: |
+    Testing cannot see spaces between components. A system can be fully
+    "tested" with nothing wired together.
+
+  mocking_tautology: |
+    Mocking creates circular proof: "If I mock success, my test passes."
+    Proves nothing about whether the real system works.
+
+  green_ticks_deception: |
+    Traditional tests pass while Google Cloud credentials are expired, Document AI
+    API is down, PDF processing is broken, Unicode handling fails. Verifs fail
+    LOUDLY when OCR system is actually broken and cannot extract Greek text.
+
+################################################################################
+# ANTI-PATTERNS TO AVOID
+################################################################################
+
+anti_patterns:
+  hypothetical_verification:
+    what: "Verification that doesn't touch the real system"
+    examples: ["Mocked dependencies", "Simulated inputs", "Non-production environment"]
+    prevention: "Snagging-shakedown uses the ACTUAL system"
+
+  specification_fiction:
+    what: "Detailed spec exists but code doesn't"
+    examples: ["Elaborate descriptions", "Comprehensive docs", "No implementation"]
+    prevention: "BUILD phase requires file existence proof"
+
+  wiring_omission:
+    what: "Code exists but isn't connected"
+    examples: ["Function implemented", "Entry point calls old code", "New code never executes"]
+    prevention: "WIRE phase requires log evidence of execution"
+
+  checkbox_completion:
+    what: "Claiming done based on process, not outcomes"
+    examples: ["Checklist complete", "Approvals obtained", "System doesn't work"]
+    prevention: "COMPLETION requires observable correct behavior"
+
+  silent_failures:
+    what: "Errors hidden instead of surfaced"
+    examples: ["Exceptions swallowed", "Fallbacks hide problems", "Unlogged failures"]
+    prevention: "ALL exceptions MUST be logged (see exception_logging below)"
+
+################################################################################
+# ERROR HANDLING & EXCEPTION LOGGING
+################################################################################
+
+error_handling:
+  principle: "FAIL FAST, FAIL LOUD, LOG EVERYTHING"
+
+  rationale: |
+    Crashed systems are easier to debug than corrupted state.
+    Visible errors are better than invisible wrong answers.
+    Unlogged exceptions are verification blind spots.
+
+exception_logging:
+  requirement: "ALL exceptions MUST be logged before propagation or termination"
+
+  impossibility_argument: |
+    You CANNOT verify what you CANNOT observe.
+    Unlogged exception = no evidence = no verification.
+
+    Like mocking, unlogged exceptions create false success: code runs,
+    but failures are invisible. Silent death is the ultimate anti-pattern.
+
+  critical_processes: |
+    Main loops, workers, monitors MUST catch all exceptions, log with
+    full context, flush logger, then re-raise:
+
+    ```python
+    from philocr.utils.logging_config import get_logger, flush_loggers
+
+    logger = get_logger(__name__)
+
+    def run(self) -> None:
+        """ProcessingWorker main loop - real exception handling."""
+        try:
+            if self.batch_mode:
+                self._process_batch(rate_limiter)
+            else:
+                self._process_single(rate_limiter)
+        except KeyboardInterrupt:
+            logger.info("worker_stopped_by_user", component="ProcessingWorker")
+            raise
+        except Exception as e:
+            logger.critical(
+                "worker_unhandled_exception_CRITICAL",
+                component=self.__class__.__name__,
+                operation="run",
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            # Flush logger before process death (critical for OCR workers)
+            flush_loggers()
+            raise
+    ```
+
+  specific_handlers: |
+    All exception handlers MUST log before re-raising:
+
+    ```python
+    try:
+        result = critical_operation()
+    except (ValueError, TypeError) as e:
+        logger.error("operation_failed", error=str(e), exc_info=True)
+        raise  # Re-raise after logging
+    ```
+
+  verification_impact: |
+    During snagging-shakedown, examining logs reveals defects.
+    Unlogged exceptions make defects invisible to systematic examination.
+
+    No observation → no evidence → cannot verify fix worked.
+    This violates the scientific method at its core.
+
+  cross_reference: |
+    Implementation patterns: src/philocr/utils/error_handler.py
+    Logging format: rules_strucured_logging.md (lines 144-199)
+    Logging config: src/philocr/utils/logging_config.py
+    Exception classes: src/philocr/utils/exceptions.py
+
+zero_tolerance_mocking_policy: |
+  You cannot verify X without X existing and operating.
+  If you mock X, you're no longer verifying X.
+
+################################################################################
+# VERIFICATION COMPONENTS & ENFORCEMENT
+################################################################################
+
+verification_components:
+  verif: "Script that operates live system and observes real behavior"
+  telemetry: "Structured logging at every boundary - ALL exceptions logged"
+  guardians: "Pre-execution structural checks (static only)"
+  shakedown: "Comprehensive verif of entire subsystem - observe cascade end-to-end"
+
+enforcement:
+  guardian: "TBD - Guardian to be implemented for PhilOcr"
+  status: "PLANNED - Will block CI/CD on violations once deployed"
+  detects:
+    critical: "test_*.py naming in new verifs, ANY mocking of Document AI, PDF utils, or filesystem"
+    high: "Missing telemetry, micro-assertions without real operation, unlogged exceptions"
+  current_state: |
+    PhilOcr currently uses pytest with test_*.py naming. Transition plan:
+    1. New verification scripts use verif_*.py naming
+    2. Existing test_*.py files remain for compatibility
+    3. Guardian will enforce zero-mocking and exception logging on all new verifs
+    4. Gradual migration of critical paths to verif_*.py pattern
+
+################################################################################
+# PROGRESS TRACKING
+################################################################################
+
+progress_tracking:
+  principle: "Look at ACTUAL SYSTEM STATE, not checklists"
+
+  observe:
+    - "What files exist?"
+    - "What entry points are wired?"
+    - "What does snagging-shakedown reveal?"
+    - "What's on the snagging list?"
+
+  honest_reporting:
+    say: ["Created [file]", "Entry point calls new code (log: X)", "Found 2 defects", "Snagging list clear"]
+    never: ["Unit 3 is 80% complete", "On track for Friday", "All tests pass", "Just needs review"]
+
+################################################################################
+# RELATIONSHIP TO OTHER NORMS
+################################################################################
+
+cross_references:
+  exception_handling:
+    path: "src/philocr/utils/error_handler.py"
+    relationship: "Implements FAIL FAST, FAIL LOUD principle + logging patterns for OCR operations"
+
+  structured_logging:
+    path: "rules_strucured_logging.md"
+    relationship: "Provides observability for wiring evidence + exception logging + flush patterns"
+
+  logging_config:
+    path: "src/philocr/utils/logging_config.py"
+    relationship: "Centralized logging configuration with flush_loggers() for critical paths"
+
+  exceptions:
+    path: "src/philocr/utils/exceptions.py"
+    relationship: "PhilOcr-specific exception hierarchy for OCR processing errors"
+
+################################################################################
+# CANONICAL NOTICE
+################################################################################
+
+canonical_notice: |
+  This defines PhilOcr's verification doctrine and implementation methodology.
+
+  Every feature follows: BUILD → WIRE → SNAGGING-SHAKEDOWN → COMPLETE
+
+  Verification is whole-system, telemetry-driven, grounded in real OCR operation
+  with real PDFs and real Document AI API calls. ALL exceptions are logged.
+  
+  For OCR systems: verification means processing real scanned Greek texts and
+  verifying actual text extraction, Unicode preservation, structure handling,
+  and output format correctness.
+
+  This document is adapted from Sentinel verification doctrine for PhilOcr's
+  specific context of OCR processing for ancient Greek texts.
+
+  Key adaptations:
+  - Google Document AI API instead of OpenAI/ArangoDB
+  - PDF processing and text extraction workflows
+  - PyQt6 UI integration verification
+  - Greek Unicode and polytonic character handling
+  - OCR-specific snagging scenarios (line numbers, footnotes, headers)
+
+
+
+
+
+
+
+
+
+

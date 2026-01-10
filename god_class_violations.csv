@@ -1,0 +1,15 @@
+class_name,cohesion,description,location,method_count,severity,timestamp,type
+MainWindow,,Class MainWindow defines 18 methods (max 10).,main_window.py:35,18,critical,2026-01-10T21:25:00.833527,God Class
+MainWindow,0.3464052287581699,Class MainWindow cohesion 0.35 < 0.8.,main_window.py:35,,critical,2026-01-10T21:25:00.834094,God Class
+CredentialsFormHandler,0.19999999999999996,Class CredentialsFormHandler cohesion 0.20 < 0.8.,credentials_form_handler.py:22,,critical,2026-01-10T21:25:00.835109,God Class
+MainWindowUIComposer,0.3571428571428571,Class MainWindowUIComposer cohesion 0.36 < 0.8.,ui_composer.py:71,,critical,2026-01-10T21:25:00.835767,God Class
+TabFactory,0.0,Class TabFactory cohesion 0.00 < 0.8.,tab_factory.py:16,,critical,2026-01-10T21:25:00.836287,God Class
+FormatDisplayManager,0.6666666666666667,Class FormatDisplayManager cohesion 0.67 < 0.8.,format_display_manager.py:27,,critical,2026-01-10T21:25:00.836705,God Class
+UIBuilder,0.09523809523809523,Class UIBuilder cohesion 0.10 < 0.8.,ui_builder.py:77,,critical,2026-01-10T21:25:00.837256,God Class
+MainWindowCoordinator,0.1428571428571429,Class MainWindowCoordinator cohesion 0.14 < 0.8.,main_window_coordinator.py:23,,critical,2026-01-10T21:25:00.838079,God Class
+WidgetFactory,0.0,Class WidgetFactory cohesion 0.00 < 0.8.,widget_factory.py:24,,critical,2026-01-10T21:25:00.839902,God Class
+MainWindowStateManager,0.5,Class MainWindowStateManager cohesion 0.50 < 0.8.,main_window_state_manager.py:20,,critical,2026-01-10T21:25:00.840619,God Class
+ConfigurationManager,0.6666666666666667,Class ConfigurationManager cohesion 0.67 < 0.8.,configuration_manager.py:27,,critical,2026-01-10T21:25:00.841972,God Class
+DialogFormBuilder,0.0,Class DialogFormBuilder cohesion 0.00 < 0.8.,dialog_form_builder.py:21,,critical,2026-01-10T21:25:00.842259,God Class
+CredentialsDialog,0.6,Class CredentialsDialog cohesion 0.60 < 0.8.,dialogs.py:109,,critical,2026-01-10T21:25:00.842897,God Class
+MainWindowManagerFactory,0.0,Class MainWindowManagerFactory cohesion 0.00 < 0.8.,main_window_factory.py:27,,critical,2026-01-10T21:25:00.843470,God Class

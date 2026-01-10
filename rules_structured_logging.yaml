@@ -1,0 +1,705 @@
+# PHILOCR STRUCTURED LOGGING DOCTRINE
+# Canonical structured logging guide for the PhilOcr codebase
+#
+# Version: 1.0.0
+# Date: 2026-01-10
+# Converted from: rules_strucured_logging.md
+#
+# Cross-references:
+#   - rules_verification_snagging_shakedown.yaml (exception logging requirements)
+#   - src/philocr/utils/logging_config.py (configuration implementation)
+#   - src/philocr/utils/error_handler.py (exception handling patterns)
+
+################################################################################
+# METADATA & OVERVIEW
+################################################################################
+
+metadata:
+  name: "Structured Logging Doctrine"
+  version: "1.0.0"
+  description: |
+    Canonical structured logging guide for the PhilOcr codebase. Covers standards,
+    best practices, migration patterns, and enforcement for structlog-based logging.
+  migration_status: "✅ COMPLETE - As of 2026-01-09"
+
+################################################################################
+# CORE PRINCIPLES
+################################################################################
+
+core_principles:
+  events_not_messages: |
+    Structlog records **events that happen** with structured context. The event
+    name is the first positional argument, followed by keyword arguments for context.
+
+    ✅ CORRECT - Event-driven logging:
+    logger.info("pdf_processing_started", file_path="/path/to/file.pdf", page_count=10)
+    logger.error("document_ai_request_failed", error=str(e), error_type=type(e).__name__)
+
+    ❌ WRONG - Message-driven logging:
+    logger.info(f"Processing PDF: {file_path}")
+    logger.error(f"Document AI error: {e}")
+
+################################################################################
+# CRITICAL ANTI-PATTERNS
+################################################################################
+
+critical_anti_patterns:
+  pattern_1_event_keyword:
+    title: "Using 'event' as a Keyword Argument (CAUSES CRASH)"
+    severity: "CRITICAL"
+    description: |
+      "event" is reserved for the first positional parameter. Using it as a keyword
+      argument causes immediate TypeError.
+
+    wrong: |
+      # CRASHES with TypeError
+      logger.info("pdf_processing", event="document_processing", file_path=path)
+      logger.bind(event="some_event")  # Also crashes
+
+    correct: |
+      logger.info("document_processing", file_path=path, file_type="pdf")
+
+  pattern_2_extra_wrapper:
+    title: "The `extra` Dictionary Wrapper (ARCHITECTURAL MISTAKE)"
+    severity: "HIGH"
+    description: |
+      Never wrap structured data in `extra` - pass context directly as keyword arguments.
+
+    wrong: |
+      logger.info(
+          "Processing started",
+          extra={
+              "event": "processing_started",
+              "component": "processor",
+              "file_path": file_path
+          }
+      )
+
+    correct: |
+      logger.info("processing_started", component="processor", file_path=file_path)
+
+  pattern_3_bind_immutable:
+    title: "Ignoring Returned Bound Logger (CONTEXT LOST)"
+    severity: "HIGH"
+    description: |
+      Binding is immutable - must reassign the returned logger.
+
+    wrong: |
+      # BROKEN - Context is lost
+      logger = get_logger(__name__)
+      logger.bind(file_path=path)  # Creates new logger, discarded!
+      logger.info("file_processed")  # file_path NOT in log
+
+    correct: |
+      # CORRECT - Reassign bound logger
+      logger = get_logger(__name__)
+      logger = logger.bind(file_path=path)  # Reassign
+      logger.info("file_processed")  # file_path IS in log
+
+  pattern_4_multiple_config:
+    title: "Multiple Configuration Calls (INCONSISTENT BEHAVIOR)"
+    severity: "HIGH"
+    description: |
+      Configure once only - multiple calls cause chaos.
+
+    wrong: |
+      # ANTI-PATTERN - Multiple configurations
+      structlog.configure(processors=[...])  # In module1.py
+      structlog.configure(processors=[...])  # In module2.py - Different config!
+
+    correct: |
+      # CORRECT - Single configuration at startup
+      # In main.py only
+      from philocr.utils.logging_config import configure_logging
+      configure_logging(json_logs=None, log_level="INFO")  # Once
+
+  pattern_5_module_binding:
+    title: "Module-Level Binding (EXECUTES BEFORE CONFIG)"
+    severity: "HIGH"
+    description: |
+      Never bind at import time - binding executes before configuration.
+
+    wrong: |
+      # BROKEN - Executes at import, before configuration
+      logger = get_logger(__name__)
+      bound_logger = logger.bind(module="mymodule")  # Uses unconfigured logger!
+
+    correct: |
+      # CORRECT - Bind inside functions
+      logger = get_logger(__name__)
+
+      def process_document(file_path: str):
+          log = logger.bind(file_path=file_path)  # After configuration
+          log.info("document_processing_started")
+
+  pattern_6_message_formatting:
+    title: "Traditional Message Formatting (LOSES STRUCTURE)"
+    severity: "MEDIUM"
+    description: |
+      Don't format messages - use structured data.
+
+    wrong: |
+      # ANTI-PATTERN - Unqueryable string
+      logger.info(f"Processing file {file_path} with {page_count} pages")
+
+    correct: |
+      # CORRECT - Structured and queryable
+      logger.info("file_processing_started", file_path=file_path, page_count=page_count)
+
+  pattern_7_generic_names:
+    title: "Generic Event Names (USELESS FOR ANALYSIS)"
+    severity: "MEDIUM"
+    description: |
+      Events must be specific to be useful for analysis.
+
+    wrong: |
+      # ANTI-PATTERN - Too generic
+      logger.info("info", message="something happened")
+      logger.error("error", details="it failed")
+
+    correct: |
+      # CORRECT - Specific events
+      logger.info("pdf_split_completed", page_count=10, output_files=5)
+      logger.error("document_ai_api_error", status_code=429, retry_after=60)
+
+  pattern_8_no_exception_handlers:
+    title: "Main Loops Without Exception Handlers (SILENT CRASHES)"
+    severity: "CRITICAL"
+    description: |
+      Critical worker processes must catch and log all exceptions.
+
+    wrong: |
+      # ANTI-PATTERN - Process crashes silently, no diagnostic data
+      def run(self) -> None:
+          while True:
+              await self._process_items()  # Exception here → process dies, no logs!
+
+    correct: |
+      # CORRECT - Catch all exceptions and log before exit
+      from philocr.utils.logging_config import get_logger, flush_loggers
+
+      logger = get_logger(__name__)
+
+      def run(self) -> None:
+          try:
+              if self.batch_mode:
+                  self._process_batch(rate_limiter)
+              else:
+                  self._process_single(rate_limiter)
+          except KeyboardInterrupt:
+              logger.info("worker_stopped_by_user", component="ProcessingWorker")
+              raise
+          except Exception as e:
+              logger.critical(
+                  "worker_unhandled_exception_CRITICAL",
+                  component="ProcessingWorker",
+                  operation="run",
+                  error=str(e),
+                  error_type=type(e).__name__,
+                  exc_info=True,
+              )
+              flush_loggers()
+              raise
+
+  pattern_9_no_flush_before_rerase:
+    title: "Exception Handlers That Re-Raise Without Flushing Logger (LOST LOGS)"
+    severity: "CRITICAL"
+    description: |
+      Logs might not be written before process exit. Always flush before re-raising.
+
+    wrong: |
+      # ANTI-PATTERN - Log might not be written before process dies
+      except Exception as e:
+          logger.error("operation_failed", error=str(e), exc_info=True)
+          raise  # Process exits immediately, log might be lost!
+
+    correct: |
+      # CORRECT - Flush logger before re-raising
+      from philocr.utils.logging_config import flush_loggers
+
+      except Exception as e:
+          logger.error(
+              "operation_failed",
+              error=str(e),
+              error_type=type(e).__name__,
+              exc_info=True,
+          )
+          flush_loggers()
+          raise  # Now logs are guaranteed to be written
+
+    pattern_for_critical_handlers: |
+      Pattern for all critical exception handlers:
+      1. Log the exception with full context (`exc_info=True`)
+      2. Flush all logging handlers using `flush_loggers()`
+      3. Then re-raise (if maintaining fail-fast behavior)
+
+################################################################################
+# CONFIGURATION & ARCHITECTURE
+################################################################################
+
+configuration:
+  location: "src/philocr/utils/logging_config.py"
+  description: "Single configuration point for all structured logging"
+
+  provided_functions:
+    configure_logging: |
+      configure_logging(json_logs: Optional[bool] = None, log_level: str = "INFO")
+      Configure structlog once at startup
+
+    get_logger: |
+      get_logger(name: Optional[str] = None) -> structlog.BoundLogger
+      Get a configured logger instance
+
+    flush_loggers: |
+      flush_loggers() -> None
+      Flush all logging handlers (critical for exception handlers)
+
+  application_initialization: |
+    In src/philocr/main.py:
+
+    from philocr.utils.logging_config import configure_logging, get_logger
+
+    # Configure once at startup
+    configure_logging(json_logs=None, log_level="INFO")
+    logger = get_logger(__name__)
+
+    # Use it
+    logger.info(
+        "application_starting",
+        app_name="PhilOcr",
+        app_version="2.0.0",
+    )
+
+  import_patterns:
+    type_safe: |
+      Use this pattern for logger imports to handle type checking properly:
+
+      from typing import TYPE_CHECKING
+
+      if TYPE_CHECKING:
+          import structlog
+          logger: structlog.BoundLogger
+      else:
+          from philocr.utils.logging_config import get_logger
+          logger = get_logger(__name__)
+
+    simple: |
+      Or simply (if TYPE_CHECKING isn't needed):
+
+      from philocr.utils.logging_config import get_logger
+
+      logger = get_logger(__name__)
+
+################################################################################
+# USAGE PATTERNS
+################################################################################
+
+usage_patterns:
+  basic_event_logging: |
+    from philocr.utils.logging_config import get_logger
+
+    logger = get_logger(__name__)
+
+    # Simple events
+    logger.info("pdf_loaded", file_path="/path/to/file.pdf", page_count=10)
+    logger.debug("rate_limit_check", requests_made=45, limit=60)
+    logger.warning("temp_file_cleanup_failed", file_path="/tmp/file.pdf")
+
+    # Complex events with multiple fields
+    logger.info(
+        "document_ai_request_completed",
+        request_id="req_abc123",
+        file_path="/path/to/file.pdf",
+        page_count=10,
+        status_code=200,
+        duration_ms=1450,
+        characters_extracted=12500,
+    )
+
+  exception_handling: |
+    from philocr.utils.logging_config import get_logger, flush_loggers
+
+    logger = get_logger(__name__)
+
+    try:
+        result = await process_pdf(file_path)
+        logger.info("pdf_processing_completed", file_path=file_path, page_count=result.pages)
+    except ValueError as e:
+        logger.error(
+            "validation_failed",
+            error=str(e),
+            error_type=type(e).__name__,
+            file_path=file_path,
+            exc_info=True,  # Include traceback
+        )
+        raise
+    except Exception as e:
+        logger.exception("unexpected_error", file_path=file_path)  # Auto includes exc_info
+        flush_loggers()
+        raise
+
+  context_management: |
+    For function-scoped context:
+
+    def process_batch(batch_id: str, file_paths: list[str]):
+        # Create local logger with bound context
+        log = logger.bind(batch_id=batch_id, batch_size=len(file_paths))
+        
+        log.info("batch_processing_started")
+        
+        for idx, file_path in enumerate(file_paths):
+            item_log = log.bind(file_path=file_path, file_index=idx)
+            try:
+                process_file(file_path)
+                item_log.info("file_processed")
+            except Exception as e:
+                item_log.error(
+                    "file_processing_failed",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    exc_info=True,
+                )
+
+    Important: When using `.bind()`, always reassign the result:
+
+    # ❌ WRONG - Context is lost
+    logger = get_logger(__name__)
+    logger.bind(file_path=path)  # Creates new logger, discarded!
+    logger.info("file_processed")  # file_path NOT in log
+
+    # ✅ CORRECT - Reassign bound logger
+    logger = get_logger(__name__)
+    logger = logger.bind(file_path=path)  # Reassign
+    logger.info("file_processed")  # file_path IS in log
+
+################################################################################
+# EVENT & FIELD NAMING
+################################################################################
+
+naming_conventions:
+  event_naming:
+    description: |
+      Use snake_case, action-oriented names that describe what happened.
+
+    good_examples:
+      - "pdf_loaded"
+      - "pdf_processing_started"
+      - "pdf_processing_completed"
+      - "document_ai_request_initiated"
+      - "document_ai_response_received"
+      - "text_extraction_completed"
+      - "markdown_conversion_started"
+      - "file_saved"
+      - "configuration_loaded"
+      - "rate_limit_exceeded"
+      - "temp_file_created"
+      - "temp_file_cleanup_failed"
+
+    bad_examples:
+      - name: "PdfLoaded"
+        reason: "Wrong case"
+      - name: "processed"
+        reason: "Too generic"
+      - name: "info"
+        reason: "Not descriptive"
+      - name: "pdf"
+        reason: "Not an event"
+      - name: "error"
+        reason: "Too generic"
+
+  field_naming:
+    description: |
+      Use snake_case with explicit units and consistent suffixes.
+
+    example: |
+      logger.info(
+          "document_ai_request_completed",
+          # Time fields - always include unit
+          duration_ms=1500,
+          timeout_seconds=30,
+          rate_limit_wait_seconds=5,
+          
+          # IDs - consistent suffix
+          request_id="req_abc",
+          file_id="file_xyz",
+          batch_id="batch_123",
+          
+          # Counts/sizes - be specific
+          page_count=10,
+          retry_count=3,
+          file_size_bytes=1024000,
+          characters_extracted=12500,
+          queue_length=42,
+          
+          # Status/state - clear naming
+          is_batch_mode=True,
+          has_metadata=False,
+          status_code=200,
+          
+          # File paths - explicit naming
+          file_path="/path/to/file.pdf",
+          output_path="/path/to/output.md",
+          temp_file_path="/tmp/temp.pdf",
+      )
+
+################################################################################
+# MIGRATION GUIDE
+################################################################################
+
+migration:
+  checklist:
+    - "Replace `print()` with structured logging"
+    - "Replace `logging.getLogger()` with `get_logger(__name__)`"
+    - "Convert f-string messages to structured events"
+    - "Remove any `extra` dictionary wrappers"
+    - "Fix any 'event' keyword arguments"
+    - "Ensure `logger.bind()` results are reassigned"
+    - "Add `flush_loggers()` before re-raising in critical exception handlers"
+    - "Wrap main loops in try/except with logging"
+    - "Use descriptive event names (snake_case)"
+    - "Include units in field names (duration_ms, size_bytes, etc.)"
+
+  common_patterns:
+    pattern_1_simple_info: |
+      # ❌ OLD
+      logger.info(f"Processing file: {file_path}")
+
+      # ✅ NEW
+      logger.info("file_processing_started", file_path=file_path)
+
+    pattern_2_error_exception: |
+      # ❌ OLD
+      logger.error(f"Failed to process {file_path}: {e}", exc_info=True)
+
+      # ✅ NEW
+      from philocr.utils.logging_config import flush_loggers
+
+      logger.error(
+          "file_processing_failed",
+          file_path=file_path,
+          error=str(e),
+          error_type=type(e).__name__,
+          exc_info=True,
+      )
+      # In critical paths, also flush before re-raising:
+      flush_loggers()
+      raise
+
+    pattern_3_multi_variable: |
+      # ❌ OLD
+      logger.info(f"User {user_id} completed task {task_id} in {duration}ms")
+
+      # ✅ NEW
+      logger.info(
+          "user_task_completed",
+          user_id=user_id,
+          task_id=task_id,
+          duration_ms=duration,
+      )
+
+    pattern_4_progress: |
+      # ❌ OLD
+      logger.info(f"Progress: {current}/{total} ({percent}%)")
+
+      # ✅ NEW
+      logger.info(
+          "progress_update",
+          current=current,
+          total=total,
+          percent=percent,
+      )
+
+    pattern_5_debug: |
+      # ❌ OLD
+      logger.debug(f"Cache hit for key: {cache_key}")
+      logger.debug(f"Rate limit reached, waiting {wait_time:.2f} seconds")
+
+      # ✅ NEW
+      logger.debug("cache_hit", cache_key=cache_key)
+      logger.debug(
+          "rate_limit_wait",
+          wait_time_seconds=round(wait_time, 2),
+      )
+
+    pattern_6_warning: |
+      # ❌ OLD
+      logger.warning(f"File not found: {file_path}")
+      logger.warning(f"Using fallback method for {operation}")
+
+      # ✅ NEW
+      logger.warning("file_not_found", file_path=file_path)
+      logger.warning("using_fallback_method", operation=operation)
+
+  step_by_step_process:
+    step_1: |
+      1. Update Imports:
+      from philocr.utils.logging_config import get_logger
+      logger = get_logger(__name__)
+
+    step_2: |
+      2. Replace Logger Creation:
+      # Remove:
+      import logging
+      logger = logging.getLogger(__name__)
+      
+      # Add:
+      logger = get_logger(__name__)
+
+    step_3: |
+      3. Convert F-Strings:
+      - Find all f-string log messages: `logger.info(f"...")`
+      - Extract event name (snake_case, descriptive)
+      - Move variables to keyword arguments: `logger.info("event_name", var=value)`
+
+    step_4: |
+      4. Fix Error Logging:
+      - Ensure error logs include: `error=str(e)`, `error_type=type(e).__name__`, `exc_info=True`
+
+    step_5: |
+      5. Replace Print Statements:
+      - Find any `print()` calls
+      - Replace with appropriate logger level (info/debug/error)
+
+    step_6: |
+      6. Format Code:
+      python -m black <file>
+      python -m isort <file>
+
+    step_7: |
+      7. Verify:
+      python3 guardians/guardian_063_structured_logging.py | grep <filename>
+      # Should show zero violations for this file
+
+    step_8: |
+      8. Test:
+      - Run unit tests for the module
+      - Verify logs appear correctly in both console and JSON formats
+      - Check that structured fields are properly extracted
+
+################################################################################
+# GUARDIAN ENFORCEMENT
+################################################################################
+
+guardian_enforcement:
+  guardian_file: "guardians/guardian_063_structured_logging.py"
+  status: "PLANNED - To be implemented for PhilOcr"
+
+  detects:
+    - "Bare `print()` calls in production code"
+    - "Using 'event' as keyword argument (CRITICAL)"
+    - "F-string formatting in log messages"
+    - "Standard `logging.getLogger()` instead of structlog"
+    - "`extra` dictionary wrapper (anti-pattern)"
+    - "`logger.bind()` without reassignment"
+    - "Multiple `structlog.configure()` calls"
+
+  usage: |
+    Run the guardian to verify compliance:
+
+    python guardians/guardian_063_structured_logging.py
+
+    Expected output:
+    ✅ All production code follows structured logging standards
+    StructuredLoggingGuardian Score: 100/100
+
+################################################################################
+# MIGRATION STATUS
+################################################################################
+
+migration_status:
+  status: "✅ COMPLETE"
+  date: "2026-01-09"
+  description: |
+    All production code has been migrated to structured logging. The codebase
+    achieves 100% compliance with structured logging standards.
+
+  achievements:
+    - "0 violations found by Structured Logging Guardian"
+    - "All core processing components migrated"
+    - "All utility modules migrated"
+    - "All UI components migrated"
+    - "Guardian automated enforcement in place"
+
+  migrated_files:
+    - "main.py"
+    - "error_handler.py"
+    - "processing_worker.py"
+    - "document_ai.py"
+    - "pdf_utils.py"
+    - "document_ai_formatter.py"
+    - "markdown_handler.py"
+    - "academic_doc_parser.py"
+    - "streaming_academic_doc_parser.py"
+    - "settings_manager.py"
+    - "env_loader.py"
+    - "env_utils.py"
+    - "json_handler.py"
+    - "temp_cleaner.py"
+    - "memory_manager.py"
+    - "icon_loader.py"
+    - "dialogs.py"
+    - "All UI components"
+
+  exempted_files:
+    reason: "CLI utilities in root directory"
+    files:
+      - "migrate_settings.py"
+      - "run_tests.py"
+      - "check_remaining_issues.py"
+
+################################################################################
+# COMMON MISTAKES TO AVOID
+################################################################################
+
+common_mistakes:
+  - "Using 'event' as keyword - Will crash immediately"
+  - "Multiple configuration calls - Causes inconsistent behavior"
+  - "Forgetting to reassign bound loggers - Context gets lost"
+  - "Module-level binding - Executes before configuration"
+  - "Traditional message formatting - Loses structure and queryability"
+  - "Generic event names - Useless for analysis"
+  - "Re-raising without flushing logger - Logs might not be written before exit"
+  - "Main loops without exception handlers - Process crashes silently"
+
+################################################################################
+# SUMMARY
+################################################################################
+
+summary: |
+  Structlog is simple when used correctly:
+  1. Configure once at startup in `main.py`
+  2. Event name is first positional argument
+  3. Context as keyword arguments
+  4. Never use "event" as a keyword
+  5. Bind creates new loggers (reassign them)
+  6. Flush logger before re-raising in critical paths
+  7. Clear context at boundaries (if applicable)
+
+################################################################################
+# REFERENCES
+################################################################################
+
+references:
+  guardian:
+    path: "guardians/guardian_063_structured_logging.py"
+    description: "Automated enforcement"
+
+  configuration:
+    path: "src/philocr/utils/logging_config.py"
+    description: "Centralized logging setup"
+
+  structlog_docs:
+    url: "https://www.structlog.org/"
+    description: "Official structlog documentation"
+
+  verification_doctrine:
+    path: "rules_verification_snagging_shakedown.yaml"
+    description: "Exception logging requirements"
+
+canonical_notice: |
+  This is the canonical structured logging guide for the PhilOcr codebase.
+
+  All logging in PhilOcr follows these standards. Any deviation must be justified
+  and documented.
+
+  For exception handling patterns, see: rules_verification_snagging_shakedown.yaml

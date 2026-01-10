@@ -1,0 +1,51 @@
+repos:
+  # Local hook to check git identity
+  - repo: local
+    hooks:
+      - id: check-git-identity
+        name: Check git identity (philofree)
+        entry: .git/hooks/check-git-identity
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: guardians
+        name: Run guardians (code quality checks)
+        entry: python3 .pre-commit-guardians.py
+        language: system
+        always_run: true
+        pass_filenames: false
+        verbose: true
+        stages: [commit]
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        exclude: ^(venv|\.venv|venv\.|venv\.backup.*|ENV|env|\.env)/
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        language_version: python3
+        exclude: ^(venv|\.venv|venv\.|venv\.backup.*|ENV|env|\.env)/
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile=black"]
+        exclude: ^(venv|\.venv|venv\.|venv\.backup.*|ENV|env|\.env)/
+  # Type checking with Pyright (replaces MyPy - Pyright is more strict and better)
+  # Runs once on entire codebase to collect all errors and warnings together
+  - repo: local
+    hooks:
+      - id: pyright-warnings-errors
+        name: Pyright Type Checking (Errors & Warnings Separated)
+        entry: python scripts/pyright_warnings_errors.py
+        language: system
+        types: [python]
+        pass_filenames: false  # Don't pass filenames - run on entire codebase once
+        args: []
+        exclude: ^(venv|\.venv|venv\.|venv\.backup.*|ENV|env|\.env)/
+        # Only fail on errors, not warnings (warnings are shown but don't block)
+        always_run: false
+        stages: [commit]  # Only run on commit, not on every file save 

@@ -1,0 +1,466 @@
+# PHILOCR AI AGENT HYGIENE POLICY
+# Version: 2.0.0 (Adapted for PhilOcr)
+# Date: 2026-01-10
+#
+# Cross-references:
+#   - rules_verification_snagging_shakedown.yaml (verif_*.py naming, zero mocking)
+#
+# @purpose:philocr To prevent AI agents from generating junk, duplicate files,
+# irrelevant artifacts, and documentary debt that pollutes the PhilOcr codebase
+# and derails OCR development through irresponsible and messy practices.
+
+metadata:
+  title: "PhilOcr AI Agent Hygiene Policy - Zero Tolerance for Mess"
+  version: "2.0.0"
+  created: "2025-01-27"
+  adapted: "2026-01-10"
+  status: "AUTHORITATIVE"
+  scope: "ALL AI agents working on PhilOcr project"
+  enforcement: "MANDATORY - No exceptions"
+  project_context: |
+    PhilOcr: OCR processing application for ancient Greek texts
+    - Google Document AI API integration
+    - PyQt6 desktop UI
+    - PDF processing and markdown conversion
+    - Greek Unicode and polytonic character handling
+
+# ==============================================================================
+# 🎯 CORE PRINCIPLE: DON'T BE A MESSY DEVELOPER
+# ==============================================================================
+
+core_principle:
+  statement: "AI agents must behave like responsible, professional developers who clean up after themselves"
+
+  professional_developer_behavior:
+    - "Creates only necessary files"
+    - "Deletes temporary artifacts when done"
+    - "Avoids duplicate documentation"
+    - "Writes maintainable, not throwaway code"
+    - "Respects existing project structure"
+    - "Leaves codebases cleaner than found"
+
+  anti_pattern: |
+    The "helpful but messy" AI agent that:
+    - Creates multiple README files "just to be helpful"
+    - Generates throwaway verification scripts and leaves them behind
+    - Duplicates existing documentation with slight variations
+    - Creates backup files "just in case" (*.backup, *_original, versioned names)
+    - Adds utility scripts that never get maintained
+    - Pollutes documentation directories with transient audit reports and fix summaries
+    - Leaves temporary processing outputs or test artifacts in source directories
+    - Creates duplicate configuration files with backup suffixes
+
+# ==============================================================================
+# 🚫 UNIVERSAL PROHIBITIONS - APPLY TO ALL PROJECTS
+# ==============================================================================
+
+universal_prohibitions:
+
+  duplicate_documentation_debt:
+    principle: "ONE SOURCE OF TRUTH FOR DOCUMENTATION"
+
+    absolutely_forbidden:
+      - behavior: "Creating multiple README files"
+        examples: ["README_v2.md", "README_BACKUP.md", "NEW_README.md", "UPDATED_README.md"]
+        why_bad: "Confuses users about which documentation is authoritative"
+
+      - behavior: "Duplicate explanatory files"
+        examples: ["EXPLANATION.md", "HOW_IT_WORKS.md", "GUIDE.md", "INSTRUCTIONS.md"]
+        why_bad: "Creates maintenance burden and version drift"
+        
+      - behavior: "Transient documentation in permanent documentation directories"
+        examples: ["Audit reports", "Fix summaries", "Refactoring notes", "Development logs", "Priority lists"]
+        why_bad: "Documentation directories should contain only permanent reference material, not transient work products"
+        principle: "Transient reports belong in issue tracking systems, not documentation"
+
+      - behavior: "Multiple getting started guides"
+        examples: ["QUICKSTART.md", "GETTING_STARTED.md", "SETUP.md", "INSTALL.md"]
+        why_bad: "Users don't know which one to follow"
+
+      - behavior: "Redundant API documentation"
+        examples: ["API.md", "API_DOCS.md", "ENDPOINTS.md", "REFERENCE.md"]
+        why_bad: "Documentation becomes inconsistent and stale"
+
+  throwaway_code_pollution:
+    principle: "NO PERMANENT TEMPORARY CODE"
+
+    absolutely_forbidden:
+      - behavior: "Leaving verification scripts behind"
+        examples: ["verif_quick.py", "debug_*.py", "temp_check.py", "verify_*.py"]
+        why_bad: "Accumulates unmaintained code that confuses future developers"
+        principle: "Verification scripts should be part of test suite or deleted after use"
+
+      - behavior: "Utility scripts that aren't maintained"
+        examples: ["helper.py", "utils.js", "quick_fix.py", "temp_solution.rb"]
+        why_bad: "Becomes technical debt when requirements change"
+
+      - behavior: "Debug artifacts left in codebase"
+        examples: ["debug.log", "test_output.txt", "temp_data.json", "scratch.py", "*.coverage *"]
+        why_bad: "Pollutes repository with irrelevant files"
+        principle: "Temporary processing outputs and debug logs should be cleaned up immediately"
+
+      - behavior: "Proof-of-concept code not cleaned up"
+        examples: ["poc_feature.py", "experiment.js", "try_this.py", "maybe_works.rb"]
+        why_bad: "Creates confusion about what's production vs experimental"
+
+  backup_file_pollution:
+    principle: "USE VERSION CONTROL, NOT BACKUP FILES"
+
+    absolutely_forbidden:
+      - behavior: "Creating backup files"
+        examples: [".bak", ".old", ".backup", "_original", "_copy"]
+        why_bad: "Version control exists for this purpose"
+
+      - behavior: "Versioned file names"
+        examples: ["config_v1.json", "script_v2.py", "old_implementation.js", "*.backup", "* 2.*"]
+        why_bad: "Creates file system clutter and confusion"
+        principle: "Version control handles versioning - file names should not include versions or backup suffixes"
+
+      - behavior: "Commented-out code blocks"
+        examples: ["# OLD CODE:", "/* BACKUP VERSION */", "// PREVIOUS IMPLEMENTATION"]
+        why_bad: "Makes code harder to read and maintain"
+
+  irrelevant_artifact_creation:
+    principle: "EVERY FILE MUST SERVE A CLEAR PURPOSE"
+
+    absolutely_forbidden:
+      - behavior: "Creating files 'just in case'"
+        examples: ["might_need.py", "future_use.js", "placeholder.md"]
+        why_bad: "YAGNI - You Aren't Gonna Need It"
+
+      - behavior: "Personal development notes and transient reports"
+        examples: ["TODO.md", "NOTES.txt", "IDEAS.md", "THOUGHTS.md", "Audit reports", "Violation reports", "Priority lists"]
+        why_bad: "Personal artifacts and transient reports don't belong in shared repositories"
+        principle: "Transient work products belong in issue tracking systems, not documentation directories"
+
+      - behavior: "Excessive configuration files"
+        examples: ["config_dev.json", "config_test.json", "config_backup.json"]
+        why_bad: "Creates configuration sprawl and maintenance burden"
+
+# ==============================================================================
+# ✅ RESPONSIBLE ALTERNATIVES - WHAT TO DO INSTEAD
+# ==============================================================================
+
+responsible_alternatives:
+
+  instead_of_duplicate_docs:
+    wrong: "Create README_v2.md with updated information"
+    right: "Update the existing README.md with new information"
+    principle: "Improve, don't duplicate"
+
+  instead_of_throwaway_scripts:
+    wrong: "Create verification script and leave it in the repo"
+    right: "Create temporary verification script in tests/, use it, delete it immediately after verification"
+    principle: "Temporary means temporary - verification scripts must be part of test suite or deleted"
+
+  instead_of_backup_files:
+    wrong: "Save *.backup file before modifying"
+    right: "Commit current state, then modify - git is your backup"
+    principle: "Trust version control - commit before modifying, don't create backup files"
+
+  instead_of_multiple_explanations:
+    wrong: "Create HOW_TO_USE.md alongside existing documentation"
+    right: "Add usage section to existing documentation"
+    principle: "Consolidate, don't proliferate"
+
+# ==============================================================================
+# 📏 UNIVERSAL HYGIENE RULES - APPLY EVERYWHERE
+# ==============================================================================
+
+universal_hygiene_rules:
+
+  file_creation_rules:
+    - rule: "Before creating any file, check if it already exists"
+      enforcement: "If similar file exists, enhance it instead of creating new"
+
+    - rule: "Every file must have a clear, ongoing purpose"
+      enforcement: "If purpose is temporary, plan deletion from the start"
+
+    - rule: "No file should duplicate existing functionality"
+      enforcement: "Consolidate rather than create parallel implementations"
+
+    - rule: "Follow existing project naming conventions"
+      enforcement: "Don't introduce new naming patterns without justification"
+      principle: "Respect established project structure and naming patterns - don't create variations"
+
+  cleanup_responsibilities:
+    - rule: "Delete temporary files when task is complete"
+      enforcement: "Set reminders or use automated cleanup"
+
+    - rule: "Remove debug artifacts before committing"
+      enforcement: "Review all changes before version control submission"
+
+    - rule: "Consolidate related functionality"
+      enforcement: "If you create multiple related files, consider merging"
+
+    - rule: "Update existing documentation rather than creating new"
+      enforcement: "Always check for existing docs first - enhance existing, don't duplicate"
+      principle: "One source of truth for each documentation topic - update existing files"
+
+  quality_standards:
+    - rule: "Code must be maintainable, not just functional"
+      enforcement: "Consider who will maintain this code in 6 months"
+
+    - rule: "Documentation must be accurate and current"
+      enforcement: "Update docs when changing related code"
+
+    - rule: "Verifications must be meaningful and maintained"
+      enforcement: "No throwaway verification scripts - make them part of test suite or delete them"
+      principle: "Verification scripts must use real components and real data. If temporary, delete after use"
+
+# ==============================================================================
+# 🚨 IMMEDIATE CLEANUP CHECKLIST
+# ==============================================================================
+
+cleanup_checklist:
+  before_finishing_any_task:
+    - check: "Are there any temporary files I created?"
+      action: "Delete all temporary files and scripts"
+
+    - check: "Did I create any duplicate documentation?"
+      action: "Consolidate into existing documentation"
+
+    - check: "Are there any backup files in the repository?"
+      action: "Remove backup files - version control handles this"
+
+    - check: "Did I leave any debug artifacts?"
+      action: "Remove debug logs, test outputs, and temporary data"
+
+    - check: "Are all my changes necessary and maintainable?"
+      action: "Remove anything that doesn't serve a clear ongoing purpose"
+
+  weekly_hygiene_review:
+    - check: "How many files did I create this week?"
+      action: "Review each file - is it still needed?"
+
+    - check: "Are there patterns in my file creation?"
+      action: "Identify and eliminate wasteful patterns"
+
+    - check: "What files haven't been touched in a month?"
+      action: "Consider if they should be deleted"
+
+# ==============================================================================
+# 🎯 DECISION FRAMEWORK - WHEN IN DOUBT
+# ==============================================================================
+
+decision_framework:
+  before_creating_any_file:
+    questions:
+      - "Does a file like this already exist?"
+      - "Will this file need ongoing maintenance?"
+      - "Is this solving a permanent or temporary problem?"
+      - "Will other developers understand why this file exists?"
+      - "Am I creating this because it's easier than improving existing files?"
+
+    decision_tree: |
+      If ANY of these are true, DON'T CREATE THE FILE:
+      - Similar file already exists
+      - This is for temporary/one-time use
+      - This duplicates existing functionality
+      - This is just "nice to have" documentation
+      - This is a backup or safety copy
+
+      Instead:
+      - Improve existing files
+      - Use temporary files and delete them
+      - Extend existing functionality
+      - Enhance existing documentation
+      - Trust version control for safety
+
+  before_writing_any_code:
+    questions:
+      - "Is this code going to be maintained?"
+      - "Does this solve a real, ongoing problem?"
+      - "Am I duplicating existing functionality?"
+      - "Will this code still be relevant in 3 months?"
+
+    guidelines:
+      - "Write maintainable code or don't write it at all"
+      - "Extend existing systems rather than creating parallel ones"
+      - "Temporary solutions should be obviously temporary"
+      - "Every line of code is a maintenance commitment"
+
+# ==============================================================================
+# 📊 HYGIENE METRICS - MEASURE YOUR MESS
+# ==============================================================================
+
+hygiene_metrics:
+  file_pollution_index:
+    formula: "Unnecessary_files / Total_files"
+    target: "< 0.05 (less than 5% junk files)"
+    red_flags: [".bak files", "multiple READMEs", "temp_* files", "old_* files"]
+
+  documentation_redundancy:
+    formula: "Duplicate_docs / Total_documentation"
+    target: "0.0 (zero duplicate documentation)"
+    red_flags: ["README variations", "multiple getting started guides", "redundant API docs"]
+
+  code_maintenance_burden:
+    formula: "Unmaintained_scripts / Total_scripts"
+    target: "< 0.1 (less than 10% unmaintained code)"
+    red_flags: ["test_* scripts", "debug_* files", "temp_* utilities"]
+
+# ==============================================================================
+# 🧹 EMERGENCY CLEANUP PROCEDURES
+# ==============================================================================
+
+emergency_cleanup:
+  when_repository_is_polluted:
+    immediate_actions:
+      1. "Identify all backup files (*.bak, *.old, *_backup.*)"
+      2. "Find duplicate documentation (multiple README*, GUIDE*, etc.)"
+      3. "Locate temporary scripts (test_*, debug_*, temp_*, quick_*)"
+      4. "Remove commented-out code blocks"
+      5. "Consolidate redundant configuration files"
+
+    cleanup_commands:
+      - "find . -name '*.bak' -delete"
+      - "find . -name '*.old' -delete"
+      - "find . -name 'temp_*' -delete"
+      - "find . -name 'debug_*' -delete"
+      - "find . -name '*.backup' -delete"
+      - "find . -name '* 2.*' -delete"  # Files with ' 2' suffix (Windows backup pattern)
+      - "find . -name '.coverage *' -delete"  # Coverage files with spaces
+      # NOTE: Verification scripts should follow naming conventions from verification doctrine
+
+  prevention_measures:
+    - "Set up pre-commit hooks to detect junk files (.bak, .backup, * 2.* patterns)"
+    - "Regular repository hygiene reviews"
+    - "Automated cleanup scripts for transient artifacts"
+    - "Clear guidelines for temporary file naming and locations"
+    - "Guardian enforcement (planned) to block transient documentation in permanent directories"
+
+# ==============================================================================
+# 🎓 TRAINING FOR RESPONSIBLE AI BEHAVIOR
+# ==============================================================================
+
+responsible_ai_training:
+  core_mindset:
+    - "I am a professional developer, not a script kiddie"
+    - "Every file I create is a commitment to maintain"
+    - "Temporary means I will delete it when done"
+    - "One source of truth is better than multiple sources"
+    - "Clean code is more important than quick code"
+
+  before_every_action:
+    mantra: "Am I making this codebase better or just adding to it?"
+
+  red_flag_phrases_to_avoid:
+    - "Let me create a quick backup..." (use git commit instead)
+    - "I'll just add another README with..." (update existing documentation)
+    - "Let me make a temporary script..." (delete after use!)
+    - "I'll create a separate file for..." (consolidate into existing)
+    - "Just in case, I'll also create..." (YAGNI - You Aren't Gonna Need It)
+    - "I'll document this fix in a summary..." (transient work products don't belong in documentation)
+    - "Let me create an audit report..." (use issues/tickets, not documentation directories)
+
+# ==============================================================================
+# 🏆 SUCCESS CRITERIA - WHAT GOOD LOOKS like
+# ==============================================================================
+
+success_criteria:
+  clean_repository:
+    - "Single source of truth for all documentation"
+    - "No backup files or versioned duplicates"
+    - "No temporary scripts or debug artifacts"
+    - "Clear purpose for every file in the repository"
+    - "Consistent naming and organization"
+
+  professional_behavior:
+    - "AI agent cleans up after itself"
+    - "Improves existing files rather than creating duplicates"
+    - "Follows project conventions consistently"
+    - "Leaves codebase better than it was found"
+    - "Creates maintainable, not throwaway solutions"
+
+# ==============================================================================
+# 📋 UNIVERSAL COMPLIANCE CHECKLIST
+# ==============================================================================
+
+universal_compliance:
+  daily_checklist:
+    - "Did I create any files today that duplicate existing functionality?"
+    - "Are there any temporary files I should delete?"
+    - "Did I update documentation instead of creating new documentation?"
+    - "Are all my code changes maintainable?"
+    - "Did I follow existing project conventions?"
+
+  weekly_review:
+    - "What files did I create this week?"
+    - "Which of those files will still be relevant next month?"
+    - "Did I create any patterns of duplication?"
+    - "How can I be cleaner next week?"
+
+# ==============================================================================
+# 🎯 DOCUMENTATION HYGIENE PRINCIPLES
+# ==============================================================================
+
+documentation_hygiene:
+  permanent_vs_transient:
+    principle: "Documentation directories are for permanent reference material only"
+    
+    permanent_documentation:
+      purpose: "Reference material that will be maintained long-term"
+      examples: ["User guides", "Configuration documentation", "Architecture plans (current versions)", "API references", "Migration guides"]
+      location: "Standard documentation directories"
+      maintenance: "Updated as system evolves"
+    
+    transient_documentation:
+      purpose: "Work products created during development or refactoring"
+      examples: ["Audit reports", "Fix summaries", "Refactoring notes", "Development logs", "Priority lists", "Violation reports", "Completed plans"]
+      location: "Issue tracking systems, not documentation directories"
+      maintenance: "Not maintained - captured in issues/tickets for historical reference"
+    
+    decision_criteria: |
+      Ask: "Will this documentation be maintained and updated as the system evolves?"
+      - YES → Permanent documentation (belongs in docs/)
+      - NO → Transient work product (belongs in issue tracking)
+
+  architecture_plan_hygiene:
+    principle: "Keep only current architecture plans in documentation"
+    old_versions: "Previous architecture plan versions should be archived or removed"
+    rationale: "Multiple versions create confusion about which is current"
+
+  backup_file_patterns:
+    principle: "Backup files have no place in version-controlled repositories"
+    patterns: ["*.backup", "*.bak", "*.old", "*_original", "*_copy", "* 2.*"]
+    rationale: "Version control provides complete history - backup files are redundant"
+
+# ==============================================================================
+# 🎯 CONCLUSION - BE A RESPONSIBLE AI DEVELOPER FOR PHILOCR
+# ==============================================================================
+
+conclusion:
+  transformation: |
+    This policy transforms AI agents from sources of repository pollution
+    into responsible, professional developers who:
+
+    1. Create only necessary, maintainable files
+    2. Clean up temporary artifacts immediately
+    3. Improve existing documentation rather than duplicating it
+    4. Follow project conventions and structure
+    5. Leave codebases cleaner than they found them
+
+  responsibility: |
+    Every AI agent must take personal responsibility for repository hygiene.
+    Messy, irresponsible development practices are unacceptable regardless
+    of project size, language, or domain. Code quality and documentation
+    clarity directly impact users - every file must serve a clear purpose.
+
+  professional_standard: |
+    AI agents must meet the same standards as professional human developers:
+    clean, maintainable, well-organized code with clear documentation
+    and zero tolerance for junk files, transient documentation, and technical debt.
+
+  documentation_principle: |
+    Documentation directories are for permanent reference material that will
+    be maintained long-term. Transient work products (audit reports, fix
+    summaries, completed plans) belong in issue tracking systems, not
+    documentation directories. Every piece of documentation must be permanent
+    and accurate, or it doesn't belong in the repository.
+
+# The Golden Rule for AI Agents:
+# "Would I want to inherit and maintain the codebase I'm creating?"
+
+# Cross-references:
+#   - rules_verification_snagging_shakedown.yaml: Verification patterns and naming conventions

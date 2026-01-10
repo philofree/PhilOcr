@@ -1,0 +1,69 @@
+# PhilOcr Application Configuration
+# This file contains application settings (non-sensitive configuration)
+# Credentials are stored separately in settings.json
+
+# Processing Settings
+processing:
+  # Maximum number of pages per Document AI request (Google limit: 15)
+  max_pages_per_request: 15
+  
+  # Whether to include layout information in API responses
+  include_layout_info: true
+  
+  # API rate limiting settings
+  rate_limit_requests_per_minute: 15  # Google Document AI limit
+  rate_limit_window_seconds: 60
+
+# Memory Management
+memory:
+  # File size thresholds for determining processing strategy
+  small_file_threshold_mb: 5      # Files under this use standard processing
+  medium_file_threshold_mb: 20    # Files between small and large use chunked processing
+  large_file_threshold_mb: 50     # Files over this use streaming if available
+  
+  # Minimum available memory threshold (MB) before warnings
+  memory_check_threshold_mb: 100.0
+
+# Formatting/Output Settings
+formatting:
+  # Enable debug output in generated HTML
+  debug_mode: false
+  
+  # Use simplified formatting (faster, less detailed)
+  use_simple_formatting: true
+  
+  # HTML output styling
+  html:
+    font_family: "Arial, sans-serif"
+    metadata_font_size: "12px"
+    metadata_color: "#666"
+    body_margin: "20px"
+  
+  # Formatting thresholds (for future advanced formatter)
+  thresholds:
+    indent_threshold: 0.06           # 6% indent to detect fragment references
+    font_size_ratio_threshold: 0.85  # Ratio for footnote text size
+    margin_left_threshold: 0.08      # Left margin detection threshold
+    margin_right_threshold: 0.92     # Right margin detection threshold
+
+# Markdown Converter Settings
+markdown:
+  # File size threshold for using streaming parser (MB)
+  large_file_threshold_mb: 5
+  
+  # Chunk size for reading large files (MB)
+  chunk_size_mb: 10
+
+# Error Handling/Retry Settings
+error_handling:
+  max_retries: 3              # Maximum number of retry attempts
+  initial_delay_seconds: 1.0  # Initial delay between retries
+  max_delay_seconds: 60.0     # Maximum delay between retries
+  backoff_factor: 2.0         # Factor to multiply delay on each retry
+
+# UI/Display Settings
+ui:
+  default_window_width: 1000
+  default_window_height: 800
+  default_font_size: 14
+  default_tab: "text"  # Options: text, markdown, html, json
