@@ -59,6 +59,7 @@ class UICallbacks:
         on_save_html: Callback for save HTML button
         on_clear: Callback for clear button
         on_debug_markdown: Callback for debug markdown button
+        on_pipeline_config: Callback for pipeline configuration button
     """
 
     on_settings_clicked: Callable[[], None]
@@ -72,6 +73,7 @@ class UICallbacks:
     on_save_html: Callable[[], None]
     on_clear: Callable[[], None]
     on_debug_markdown: Callable[[], None]
+    on_pipeline_config: Callable[[], None]
 
 
 class UIBuilder:
@@ -103,6 +105,7 @@ class UIBuilder:
         self.on_save_html = callbacks.on_save_html
         self.on_clear = callbacks.on_clear
         self.on_debug_markdown = callbacks.on_debug_markdown
+        self.on_pipeline_config = callbacks.on_pipeline_config
 
     def create_header_section(self) -> QFrame:
         """Create the application header section.

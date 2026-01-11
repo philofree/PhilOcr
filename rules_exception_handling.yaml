@@ -1,0 +1,626 @@
+# PHILOCR EXCEPTION HANDLING DOCTRINE
+# Fail Fast, Fail Loud, Log Everything
+#
+# Version: 1.0.0 (Adapted for PhilOcr)
+# Date: 2026-01-10
+# Converted from: norms_exception_handling copy.md
+#
+# Cross-references:
+#   - rules_structured_logging.yaml (exception logging requirements)
+#   - rules_verification_snagging_shakedown.yaml (fail-fast philosophy)
+#   - src/philocr/utils/logging_config.py (logging configuration)
+#   - src/philocr/utils/exceptions.py (exception hierarchy)
+#   - src/philocr/utils/error_handler.py (error handling utilities)
+
+################################################################################
+# METADATA & OVERVIEW
+################################################################################
+
+metadata:
+  title: "PhilOcr Exception Handling Doctrine - Fail Fast, Not Silent"
+  version: "1.0.0"
+  created: "2026-01-10"
+  adapted_from: "norms_exception_handling copy.md"
+  status: "AUTHORITATIVE"
+  scope: "ALL AI agents working on PhilOcr project"
+  enforcement: "MANDATORY - No exceptions"
+  project_context: |
+    PhilOcr: OCR processing application for ancient Greek texts
+    - Google Document AI API integration
+    - PyQt6 desktop UI
+    - PDF processing and markdown conversion
+    - Greek Unicode and polytonic character handling
+
+################################################################################
+# CORE PRINCIPLE: FAIL FAST, NOT SILENT
+################################################################################
+
+core_principle:
+  statement: "If an operation fails, it MUST fail loudly and visibly. Silent failures are worse than crashes."
+
+  why_fail_fast:
+    - "Silent failures hide bugs - Errors that are caught and ignored create corrupt state"
+    - "Debugging becomes impossible - No logs, no stack traces, no diagnostic data"
+    - "Production issues manifest later - Problems compound until system is unrecoverable"
+    - "Violates observability - Can't monitor what you can't see"
+
+  philosophy: |
+    A crashed system is visible and can be fixed. A silently failing system creates
+    corrupt state that manifests later. For OCR processing: silent failures mean
+    corrupted text extraction, lost Greek characters, or incomplete PDF processing
+    that only becomes apparent when users examine the output.
+
+################################################################################
+# BANNED PATTERNS (ABSOLUTELY FORBIDDEN)
+################################################################################
+
+banned_patterns:
+
+  pattern_1_bare_except:
+    title: "Bare `except:` (ABSOLUTELY FORBIDDEN)"
+    severity: "CRITICAL"
+    description: "Catches EVERYTHING including KeyboardInterrupt, SystemExit"
+
+    wrong: |
+      # BANNED - Catches EVERYTHING including KeyboardInterrupt, SystemExit
+      try:
+          process_pdf(file_path)
+      except:  # ❌ ABSOLUTELY FORBIDDEN
+          pass
+
+    why_banned: "Catches system-level exceptions that should terminate the process"
+
+    correct: |
+      # CORRECT - Use specific exception types
+      try:
+          process_pdf(file_path)
+      except (ValueError, FileNotFoundError) as e:
+          logger.error("pdf_processing_failed", file_path=file_path, error=str(e), exc_info=True)
+          raise
+
+  pattern_2_broad_except_no_rerase:
+    title: "`except Exception:` Without Re-Raise (TOO BROAD, SWALLOWS ERRORS)"
+    severity: "CRITICAL"
+    description: "Catches all exceptions including programming errors without re-raising"
+
+    wrong: |
+      # BANNED - Too broad, swallows errors
+      try:
+          result = document_ai_request(pdf_content)
+      except Exception as e:  # ❌ Too broad
+          logger.warning("error", error=str(e))
+          # No raise - error is swallowed!
+
+    why_banned: |
+      Catches all exceptions including programming errors. If you catch it, you must either:
+      - Handle it properly (fix the root cause)
+      - Re-raise it (fail fast)
+      - Log and exit (fail fast with diagnostics)
+
+    correct_options:
+      option_1_specific: |
+        # Option 1: Specific exceptions with re-raise
+        try:
+            result = document_ai_request(pdf_content)
+        except (ConnectionError, RuntimeError) as e:
+            logger.error(
+                "document_ai_request_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            raise  # Re-raise to fail fast
+
+      option_2_catchall_with_rerase: |
+        # Option 2: Catch-all with re-raise (only for top-level handlers)
+        try:
+            result = document_ai_request(pdf_content)
+        except Exception as e:
+            logger.critical(
+                "unhandled_exception",
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            # Flush logger before re-raising
+            from philocr.utils.logging_config import flush_loggers
+            flush_loggers()
+            raise  # Re-raise to fail fast
+
+  pattern_3_silent_swallowing:
+    title: "Silent Swallowing (`pass`, `continue`, `return None`)"
+    severity: "CRITICAL"
+    description: "Errors are completely hidden. System continues in corrupt state."
+
+    wrong: |
+      # BANNED - Silent failure
+      try:
+          extract_text_from_pdf(file_path)
+      except Exception:
+          pass  # ❌ Error completely ignored
+
+      # BANNED - Silent continuation
+      try:
+          process_page(page)
+      except Exception:
+          continue  # ❌ Error ignored, loop continues
+
+      # BANNED - Returns success on failure
+      try:
+          result = ocr_page(page)
+      except Exception:
+          return None  # ❌ Returns success value when operation failed
+
+    why_banned: "Errors are completely hidden. System continues in corrupt state."
+
+    correct: |
+      # CORRECT - Log and fail fast
+      try:
+          extract_text_from_pdf(file_path)
+      except Exception as e:
+          logger.error(
+              "text_extraction_failed",
+              file_path=file_path,
+              error=str(e),
+              error_type=type(e).__name__,
+              exc_info=True,
+          )
+          raise RuntimeError(f"CRITICAL: Text extraction failed - {e}") from e
+
+      # CORRECT - Handle specific recoverable errors
+      try:
+          process_page(page)
+      except ConnectionError as e:
+          # Transient network error - log and skip this page
+          logger.warning(
+              "page_processing_failed_transient",
+              page_number=page.number,
+              error=str(e),
+              error_type=type(e).__name__,
+          )
+          # Continue - ConnectionError is transient, not system corruption
+          continue
+      # RuntimeError, ValueError, OSError propagate (fail fast)
+
+  pattern_4_failfast_contradiction:
+    title: "Fail-Fast Contradiction (Function Says Fail-Fast But Caller Catches)"
+    severity: "HIGH"
+    description: "Function explicitly says 'system corruption, cannot continue' but caller catches and continues"
+
+    wrong: |
+      # Function says "FAIL FAST" but caller catches and continues
+      async def _process_pdf_page(self, page: Page) -> OCRResult:
+          try:
+              # ... operation ...
+          except (OSError, ValueError, RuntimeError) as e:
+              logger.error("process_page_failed", page_number=page.number, error=str(e))
+              # FAIL FAST: Page processing failures indicate system problems
+              raise RuntimeError(f"CRITICAL: Failed - {e}") from e
+
+      # Caller contradicts the function's intent
+      for page in pages:
+          try:
+              await self._process_pdf_page(page)
+          except RuntimeError:  # ❌ Contradicts function's "FAIL FAST" intent
+              failed_pages.append(page)
+              # Continue processing - violates fail-fast policy
+
+    why_banned: |
+      Function explicitly says "system corruption, cannot continue" but caller catches
+      and continues. This creates:
+      - Inconsistent behavior (function says fail-fast, caller says continue)
+      - Hidden failures (errors logged but system continues)
+      - Corrupt state (system continues despite "corruption" errors)
+
+    correct: |
+      # Option 1: Only catch transient errors for partial failure
+      for page in pages:
+          try:
+              await self._process_pdf_page(page)
+          except ConnectionError as e:  # Only transient network errors
+              logger.warning(
+                  "page_processing_failed_transient",
+                  page_number=page.number,
+                  error=str(e),
+              )
+              failed_pages.append(page)
+              # Continue - ConnectionError is transient, not system corruption
+          # RuntimeError, ValueError, OSError propagate (fail fast)
+
+      # Option 2: Remove partial failure tolerance - fail fast on any error
+      for page in pages:
+          # No try/except - let all errors propagate
+          await self._process_pdf_page(page)
+
+    detection: |
+      Look for:
+      - Function comments saying "FAIL FAST", "system corruption", "cannot continue"
+      - Function re-raising RuntimeError with "CRITICAL" message
+      - Caller catching RuntimeError and continuing
+      - Mismatch between function's documented intent and caller's behavior
+
+################################################################################
+# REQUIRED PATTERNS
+################################################################################
+
+required_patterns:
+
+  pattern_1_specific_exceptions_with_logging:
+    title: "Specific Exceptions with Logging and Re-Raise"
+    description: "For expected, specific error types that indicate bugs or invalid state"
+
+    correct: |
+      from philocr.utils.logging_config import get_logger
+
+      logger = get_logger(__name__)
+
+      try:
+          result = process_document(file_path)
+      except (ValueError, TypeError) as e:
+          logger.error(
+              "document_processing_failed",
+              component="DocumentProcessor",
+              operation="process_document",
+              file_path=file_path,
+              error=str(e),
+              error_type=type(e).__name__,
+              exc_info=True,
+          )
+          raise  # Re-raise to fail fast
+
+    when_to_use: "For expected, specific error types that indicate bugs or invalid state"
+
+  pattern_2_transient_error_handling:
+    title: "Transient Error Handling (Partial Failure Tolerance)"
+    description: "For batch operations where individual items can fail independently"
+
+    correct: |
+      from philocr.utils.logging_config import get_logger
+
+      logger = get_logger(__name__)
+
+      failed_pages: list[int] = []
+      for page in pages:
+          try:
+              await process_page(page)
+          except ConnectionError as e:
+              # Transient network error - log and continue with other pages
+              logger.warning(
+                  "page_processing_failed_transient",
+                  component="PageProcessor",
+                  page_number=page.number,
+                  error=str(e),
+                  error_type=type(e).__name__,
+              )
+              failed_pages.append(page.number)
+              # Continue - this is a transient error, not system corruption
+          # Let RuntimeError, ValueError propagate (fail fast for system errors)
+
+      # Fail fast if too many transient errors (indicates systemic issue)
+      if len(failed_pages) > len(pages) * 0.5:
+          raise RuntimeError(
+              f"CRITICAL: Too many transient errors ({len(failed_pages)}/{len(pages)}) - "
+              f"indicates systemic issue, not transient failures"
+          )
+
+    when_to_use: |
+      - Batch processing where individual items can fail independently
+      - Only catch **transient** errors (ConnectionError, temporary network issues)
+      - **Never** catch RuntimeError, ValueError, OSError for partial failure tolerance
+      - Always fail fast if failure rate indicates systemic issue
+
+  pattern_3_toplevel_exception_handler:
+    title: "Top-Level Exception Handler (Main Loops)"
+    description: "For main loops, top-level entry points, long-running processes"
+
+    correct: |
+      from philocr.utils.logging_config import get_logger, flush_loggers
+
+      logger = get_logger(__name__)
+
+      async def run(self) -> None:
+          """Main worker loop - must log all crashes before exit."""
+          try:
+              while True:
+                  await self._process_documents()
+                  await asyncio.sleep(self.poll_interval)
+          except KeyboardInterrupt:
+              logger.info("worker_stopped_by_user", component="ProcessingWorker")
+              raise
+          except Exception as e:
+              # CRITICAL: Log ALL unhandled exceptions before process exit
+              logger.critical(
+                  "worker_unhandled_exception_CRITICAL",
+                  component="ProcessingWorker",
+                  operation="run",
+                  error=str(e),
+                  error_type=type(e).__name__,
+                  exc_info=True,
+              )
+              # Force logger to flush before process exit
+              flush_loggers()
+              # Re-raise to maintain fail-fast behavior
+              raise
+
+    when_to_use: |
+      - Main loops (`async def run()` methods)
+      - Top-level entry points
+      - Long-running processes
+
+    requirements: |
+      - Must catch `Exception` at top level (to log before exit)
+      - Must log with `exc_info=True` (full traceback)
+      - Must flush logger before re-raising
+      - Must re-raise (don't swallow)
+
+  pattern_4_error_boundaries:
+    title: "Error Boundaries (Service Layer)"
+    description: "For service boundaries, user-facing interfaces, where exceptions need to be converted to responses"
+
+    correct: |
+      from philocr.utils.logging_config import get_logger
+
+      logger = get_logger(__name__)
+
+      # High-level service method - catches and wraps errors
+      async def process_pdf_request(self, file_path: str) -> ProcessingResult:
+          try:
+              return await self._handle_pdf_processing(file_path)
+          except (ValueError, TypeError) as e:
+              # Input validation errors - return error result
+              logger.warning(
+                  "invalid_pdf_request",
+                  file_path=file_path,
+                  error=str(e),
+                  error_type=type(e).__name__,
+              )
+              return ProcessingResult(
+                  success=False,
+                  error="Invalid PDF file",
+                  error_type="validation_error",
+              )
+          except Exception as e:
+              # Unexpected errors - log and return error result
+              logger.error(
+                  "pdf_processing_failed",
+                  file_path=file_path,
+                  error=str(e),
+                  error_type=type(e).__name__,
+                  exc_info=True,
+              )
+              return ProcessingResult(
+                  success=False,
+                  error="Internal processing error",
+                  error_type="processing_error",
+              )
+
+    when_to_use: |
+      - Service boundaries (UI event handlers, request processors)
+      - User-facing interfaces
+      - Where you need to convert exceptions to user-friendly responses
+
+    requirements: |
+      - Log all errors (even if converting to response)
+      - Use appropriate error response types
+      - Don't expose internal details to users
+      - Still log full details for debugging
+
+################################################################################
+# EXCEPTION TYPE GUIDELINES
+################################################################################
+
+exception_type_guidelines:
+
+  ConnectionError:
+    meaning: "Transient network/database connection issues"
+    handling: "Can be caught for partial failure tolerance (retry, skip item)"
+    example: "Document AI API connection lost, network timeout"
+
+  RuntimeError:
+    meaning: "System corruption, programming errors, unrecoverable state"
+    handling: "**NEVER** catch for partial failure tolerance - always fail fast"
+    example: '"CRITICAL: System corruption detected", "CRITICAL: OCR processing failed"'
+
+  ValueError:
+    meaning: "Invalid input data or programming error"
+    handling: "Usually fail fast (indicates bug), but can be caught for input validation"
+    example: "Invalid PDF file, None where value required, invalid configuration"
+
+  OSError:
+    meaning: "Filesystem or system-level errors"
+    handling: "Usually fail fast (indicates system problems)"
+    example: "Disk full, permission denied, file not found, PDF read error"
+
+  TypeError_AttributeError_KeyError:
+    meaning: "Programming errors (bugs)"
+    handling: "**NEVER** catch for partial failure tolerance - always fail fast"
+    example: "Accessing attribute that doesn't exist, wrong type passed, missing dictionary key"
+
+  PhilOcrError:
+    meaning: "PhilOcr-specific application errors (base class)"
+    handling: "See specific subclasses for handling guidance"
+    reference: "src/philocr/utils/exceptions.py"
+
+  DocumentProcessingError:
+    meaning: "Document processing failures (inherits from PhilOcrError)"
+    handling: "Usually fail fast - indicates document cannot be processed"
+    example: "PDF parsing failed, OCR extraction failed, format conversion error"
+
+################################################################################
+# DECISION TREE: SHOULD I CATCH THIS EXCEPTION?
+################################################################################
+
+decision_tree: |
+  Is this a top-level handler (main loop, entry point)?
+  ├─ YES → Catch Exception, log with exc_info=True, flush logger, re-raise
+  └─ NO → Continue below
+
+  Is this a service boundary (UI handler, user-facing)?
+  ├─ YES → Catch specific exceptions, log, convert to appropriate response
+  └─ NO → Continue below
+
+  Is this a batch operation where individual items can fail?
+  ├─ YES → Only catch transient errors (ConnectionError)
+  │        └─ Fail fast if failure rate > threshold
+  └─ NO → Continue below
+
+  Does the function say "FAIL FAST" or "system corruption"?
+  ├─ YES → Don't catch RuntimeError - let it propagate
+  └─ NO → Continue below
+
+  Is this a specific, expected error type?
+  ├─ YES → Catch specific type, log, re-raise or handle
+  └─ NO → Don't catch - let it propagate to top-level handler
+
+################################################################################
+# COMMON MISTAKES
+################################################################################
+
+common_mistakes:
+
+  mistake_1_catching_runtimeerror_for_partial_failure:
+    title: "Catching RuntimeError for Partial Failure"
+    wrong: |
+      # WRONG
+      try:
+          await process_pdf_page(page)
+      except RuntimeError:  # ❌ RuntimeError means system corruption
+          logger.warning("error", page_number=page.number)
+          continue  # Continuing despite "system corruption"!
+
+    fix: "Only catch transient errors (ConnectionError) for partial failure tolerance."
+
+  mistake_2_function_says_failfast_but_caller_catches:
+    title: "Function Says Fail-Fast But Caller Catches"
+    wrong: |
+      # Function
+      async def _process_page(self, page: Page) -> None:
+          # FAIL FAST: System corruption
+          raise RuntimeError("CRITICAL: Cannot continue")
+
+      # Caller
+      try:
+          await self._process_page(page)
+      except RuntimeError:  # ❌ Contradicts function's intent
+          logger.warning("error")
+          # Continue - violates fail-fast policy
+
+    fix: "Align exception handling with function's documented intent. If function says fail-fast, don't catch RuntimeError."
+
+  mistake_3_logging_without_rerasing:
+    title: "Logging Without Re-Raising"
+    wrong: |
+      # WRONG
+      try:
+          process_pdf(file_path)
+      except Exception as e:
+          logger.error("processing_failed", file_path=file_path, error=str(e))
+          # No raise - error is swallowed!
+          return None  # Returns success when operation failed
+
+    fix: |
+      # CORRECT
+      try:
+          process_pdf(file_path)
+      except Exception as e:
+          logger.error(
+              "processing_failed",
+              file_path=file_path,
+              error=str(e),
+              error_type=type(e).__name__,
+              exc_info=True,
+          )
+          raise RuntimeError(f"CRITICAL: Processing failed - {e}") from e
+
+################################################################################
+# GUARDIAN DETECTION (PLANNED)
+################################################################################
+
+guardian_detection:
+  guardian_name: "guardian_silent_failures"
+  status: "PLANNED - To be implemented for PhilOcr"
+
+  detects:
+    - "Bare `except:`"
+    - "`except Exception:` without re-raise"
+    - "`except X: pass`"
+    - "`except X: return 0/None/False`"
+    - "`except X: continue` without logging"
+    - "`except X: ...` (ellipsis placeholder)"
+    - "`except X: return` (bare return)"
+    - "`except X: # noqa` (suppressed with comment)"
+    - "`except X: logger.error(...)` without re-raise"
+    - "Main loops without exception handlers"
+    - "Re-raise without flushing logger"
+
+  planned_enhancements: |
+    Enhance guardian to detect fail-fast contradiction pattern:
+    - Function comments containing "FAIL FAST", "system corruption", "cannot continue"
+    - Function re-raising RuntimeError with "CRITICAL" message
+    - Caller catching RuntimeError and continuing (contradiction)
+
+################################################################################
+# CROSS-REFERENCES
+################################################################################
+
+cross_references:
+  structured_logging:
+    path: "rules_structured_logging.yaml"
+    relationship: "Exception logging requirements and patterns"
+
+  verification_doctrine:
+    path: "rules_verification_snagging_shakedown.yaml"
+    relationship: "Fail-fast philosophy and exception logging requirements"
+
+  logging_config:
+    path: "src/philocr/utils/logging_config.py"
+    relationship: "Logging configuration with flush_loggers() function"
+
+  exceptions:
+    path: "src/philocr/utils/exceptions.py"
+    relationship: "PhilOcr-specific exception hierarchy"
+
+  error_handler:
+    path: "src/philocr/utils/error_handler.py"
+    relationship: "Error handling utilities and decorators"
+
+################################################################################
+# SUMMARY
+################################################################################
+
+summary: |
+  1. **Fail fast, not silent** - Errors must be visible and logged
+  2. **Specific exceptions** - Catch only what you can handle
+  3. **Re-raise by default** - Unless you're handling the error properly
+  4. **Align intent** - Don't contradict function's documented fail-fast behavior
+  5. **Transient errors only** - Only ConnectionError for partial failure tolerance
+  6. **Log before exit** - Top-level handlers must log and flush before re-raising
+
+  **Remember:** Silent failures are worse than crashes. A crashed system is visible
+  and can be fixed. A silently failing system creates corrupt state that manifests
+  later. For OCR processing: silent failures mean corrupted text extraction, lost
+  Greek characters, or incomplete PDF processing that only becomes apparent when
+  users examine the output.
+
+################################################################################
+# CANONICAL NOTICE
+################################################################################
+
+canonical_notice: |
+  This is the canonical exception handling guide for the PhilOcr codebase.
+
+  All exception handling in PhilOcr follows these standards. Any deviation must be
+  justified and documented.
+
+  For logging patterns, see: rules_structured_logging.yaml
+  For verification doctrine, see: rules_verification_snagging_shakedown.yaml
+
+  This document is adapted from another codebase's exception handling norms and
+  customized for PhilOcr's specific context of OCR processing for ancient Greek texts.
+
+  Key adaptations:
+  - Document AI API error handling instead of database errors
+  - PDF processing and OCR workflow examples
+  - PyQt6 UI integration patterns
+  - Greek Unicode and text extraction error scenarios
+  - OCR-specific error handling (page processing, text extraction, format conversion)

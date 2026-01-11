@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from philocr.utils.config_io import YAML_AVAILABLE, ConfigIO
 from philocr.utils.config_path_resolver import ConfigPathResolver
+from philocr.utils.exceptions import ConfigurationError
 
 if TYPE_CHECKING:
     import structlog
@@ -115,19 +116,50 @@ class ConfigManager:
                 file_config = ConfigIO.load_from_file(config_file)
                 config.update(file_config)
                 logger.info("config_loaded", config_file=str(config_file))
-            except (FileNotFoundError, ValueError) as e:
+            except FileNotFoundError as e:
+                # File was deleted between exists() check and open()
+                # This is a race condition - fail fast per doctrine
                 logger.error(
-                    "config_load_failed",
+                    "config_file_deleted_during_load",
                     config_file=str(config_file),
                     error=str(e),
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise ConfigurationError(
+                    f"Configuration file was deleted during load: {config_file}"
+                ) from e
+            except ValueError as e:
+                # Malformed config file - fail fast per doctrine
+                logger.critical(
+                    "config_file_malformed_CRITICAL",
+                    config_file=str(config_file),
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    exc_info=True,
+                )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise ConfigurationError(
+                    f"Configuration file is malformed: {config_file}. Error: {e}"
+                ) from e
         else:
-            logger.info(
+            # Missing config file - fail fast per doctrine
+            logger.error(
                 "config_file_not_found",
                 config_file=str(config_file),
-                using_defaults=True,
+                exc_info=False,
+            )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise ConfigurationError(
+                f"Configuration file not found: {config_file}. "
+                "Please create a configuration file before running the application."
             )
 
         self._config_loaded = config
@@ -231,6 +263,62 @@ class ConfigManager:
                 "include_layout_info": True,  # Include layout information
                 "rate_limit_requests_per_minute": 15,  # API rate limit
                 "rate_limit_window_seconds": 60,  # Rate limit window
+                "processing_mode": "standard",  # "standard" | "advanced_pipeline"
+            },
+            # Pipeline Configuration (for advanced_pipeline mode)
+            "pipeline": {
+                "stage1": {
+                    "target_dpi": 300,
+                    "output_format": "PNG",
+                    "deskew_threshold": 0.1,
+                },
+                "stage2a": {
+                    "header_search_percent": 0.15,
+                    "footer_search_percent": 0.15,
+                    "margin_search_percent": 0.20,
+                    "content_threshold": 0.05,
+                    "min_gap_size": 20,
+                    "margin_smooth_sigma": 5.0,
+                    "transition_threshold": 0.5,
+                    "margin_default_percent": 0.05,
+                    "footnote_search_percent": 0.40,
+                    "horizontal_rule_min_width": 0.2,
+                    "footnote_gap_min_size": 30,
+                },
+                "stage2b": {
+                    "template_sample_size": 20,
+                    "template_min_pages": 5,
+                    "template_skip_first": 2,
+                    "template_skip_last": 2,
+                    "outlier_threshold": 2.0,
+                },
+                "stage2c": {
+                    "use_cropping": False,
+                    "crop_padding": 0,
+                },
+                "stage3": {
+                    "ocr_max_retries": 3,
+                    "ocr_retry_backoff_base": 2.0,
+                    "ocr_rate_limit_per_minute": 15,
+                },
+                "stage4": {
+                    "indent_ratio_threshold_1": 0.02,
+                    "indent_ratio_threshold_2": 0.06,
+                    "verse_avg_line_threshold": 60,
+                    "verse_cv_threshold": 0.3,
+                    "speaker_ratio_threshold": 0.15,
+                    "fragment_ratio_threshold": 0.2,
+                },
+                "validation": {
+                    "min_template_confidence": 0.5,
+                    "min_ocr_confidence": 0.3,
+                    "min_genre_confidence": 0.5,
+                },
+                "performance": {
+                    "stage1_parallel_workers": 4,
+                    "stage2a_parallel_workers": 4,
+                    "stage3_batch_size": 1,
+                },
             },
             # Memory Management
             "memory": {

@@ -98,7 +98,26 @@ class ConfigIO:
                 else:
                     import json
 
-                    return json.load(f)
+                    try:
+                        return json.load(f)
+                    except json.JSONDecodeError as json_err:
+                        logger.error(
+                            "config_file_json_parse_error",
+                            config_file=str(config_file),
+                            error=str(json_err),
+                            error_type="JSONDecodeError",
+                            line=json_err.lineno,
+                            column=json_err.colno,
+                            exc_info=True,
+                        )
+                        flush_loggers()
+                        raise ValueError(
+                            f"Invalid JSON in configuration file at line {json_err.lineno}, "
+                            f"column {json_err.colno}: {json_err.msg}"
+                        ) from json_err
+        except ValueError:
+            # Re-raise ValueError (including JSONDecodeError wrapped as ValueError)
+            raise
         except Exception as e:
             logger.error(
                 "config_file_load_failed",

@@ -98,6 +98,10 @@ class MainWindowManagerFactory:
         on_json_ready: Callable[[dict[str, Any]], None],
         on_button_state_change: Callable[[dict[str, bool]], None],
         on_preview_clear: Callable[[], None],
+        stage_progress_widget: Any | None = None,  # StageProgressWidget
+        on_stage_progress: Callable[[str, int, str], None] | None = None,
+        on_overall_progress: Callable[[int], None] | None = None,
+        on_template_ready: Callable[[dict[str, Any]], None] | None = None,
     ) -> WorkerManager:
         """Create and configure the worker manager.
 
@@ -111,6 +115,10 @@ class MainWindowManagerFactory:
             on_json_ready: Callback for JSON data ready
             on_button_state_change: Callback for button state changes
             on_preview_clear: Callback to clear previews
+            stage_progress_widget: Optional stage progress widget for pipeline mode
+            on_stage_progress: Optional callback for stage-specific progress
+            on_overall_progress: Optional callback for overall progress
+            on_template_ready: Optional callback when template is ready
 
         Returns:
             Configured WorkerManager instance
@@ -123,11 +131,15 @@ class MainWindowManagerFactory:
             on_json_ready=on_json_ready,
             on_button_state_change=on_button_state_change,
             on_preview_clear=on_preview_clear,
+            on_stage_progress=on_stage_progress,
+            on_overall_progress=on_overall_progress,
+            on_template_ready=on_template_ready,
         )
         return WorkerManager(
             temp_cleaner=temp_cleaner,
             progress_bar=progress_bar,
             callbacks=worker_callbacks,
+            stage_progress_widget=stage_progress_widget,
         )
 
     @staticmethod

@@ -124,15 +124,26 @@ Stage 4: Assembling text... [░░░░░░░░░░] 0%
 
 **New Requirement**: Allow users to inspect/validate extracted template before processing.
 
-**Current**: No pre-processing validation.
+**Current**: No pre-processing validation. Layout detection happens post-OCR via Document AI's block structure.
 
-**Impact**: Need new UI dialog/tab for template visualization.
+**Key Difference**: 
+- **Current**: Document AI OCR → Returns blocks/layout → Structure extracted from OCR results
+- **New**: Image processing → Detect block map/layout from page images → Generate template → Mask non-body regions → Then OCR
+
+**Impact**: Need new UI dialog/tab for template visualization to validate that image-based layout detection is working correctly.
 
 **Solution**:
 - Add "Template Preview" tab in results area
 - Show template boundaries overlaid on sample pages
+- Display detected block map (body regions, margins, headers, footers, footnotes)
 - Allow manual template adjustment (future enhancement)
 - Export template JSON for reuse
+
+**Template Extraction Process** (Stage 2a):
+- Analyzes normalised page images using projection profiles
+- Detects zone boundaries (header, footer, margins, body, footnotes)
+- Builds statistical template from multiple pages (typically 20 sample pages)
+- Template represents "where body text typically appears" based on layout analysis
 
 ### 5. **Extended Configuration Management**
 
@@ -313,14 +324,21 @@ Stage 4: "Assembling text (45/100 pages)..."
 
 **Options**:
 - "Standard OCR" (current behavior - direct Document AI)
-- "Advanced Pipeline" (new v1.4 architecture)
+- "Advanced Pipeline" (new v1.4 architecture with layout-based template extraction)
 
 **Rationale**: 
-- Allows gradual migration
-- Users can compare results
-- Maintains backward compatibility
+- Allows switching between modes for comparison
+- Template extraction uses image processing to detect block map/layout of text regions from uploaded pages
+- Advanced pipeline analyzes page layouts to generate statistical templates for contamination exclusion
 
 **Location**: Main window header, near file selection buttons
+
+**Implementation Details**:
+- The advanced pipeline works by:
+  1. Analyzing uploaded pages to detect text block layout (projection profiles, zone boundaries)
+  2. Generating a statistical template from detected layout patterns
+  3. Using template to mask non-body regions before OCR
+- This layout detection happens in Stage 2a (zone detection) using the algorithms described in the architecture document
 
 ### 6. **Results Metadata Enhancement**
 
@@ -609,22 +627,28 @@ formatting:
 
 ## Recommendations
 
-### 1. **Gradual Rollout**
-- Implement as optional "Advanced Pipeline" mode
-- Keep standard mode as default
-- Gather user feedback before making default
+### 1. **Implementation Strategy**
+- Implement both Standard OCR and Advanced Pipeline modes
+- Add UI selector for mode selection (Standard vs Advanced)
+- Advanced Pipeline: Image processor detects block map/layout of text from uploaded pages → generates template → masks non-body regions
+- Template extraction (Stage 2) uses projection profiles and zone detection to analyze page layouts
+- Test both modes side-by-side during development
+- User can choose mode based on document type and requirements
 
 ### 2. **Preset Configurations**
 - Pre-configured settings for common document types:
-  - Standard Greek prose editions
+  - Standard Greek prose editions (default)
   - Fragment editions (Diels-Kranz style)
   - Verse editions (Homer, tragedy)
-- Reduces configuration complexity
+- Fine-tune presets for your specific document types
+- Can expose all advanced options directly - no need to hide complexity
+- Presets help with initial template extraction parameters for different layout patterns
 
 ### 3. **Template Reuse**
-- Save templates to file
-- Allow users to reuse templates for similar documents
-- Template library/sharing (future)
+- Save templates to file (export/import)
+- Reuse templates for similar document types (e.g., all Loeb editions use same template)
+- Store in project directory or user config directory
+- Critical for batch processing similar documents
 
 ### 4. **Visual Feedback Priority**
 - Template preview tab is critical for user trust

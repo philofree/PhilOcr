@@ -80,6 +80,7 @@ class MainWindow(QMainWindow):
             on_save_html=self.save_html,
             on_clear=self.clear_results,
             on_debug_markdown=self.debug_markdown,
+            on_pipeline_config=self.show_pipeline_config_dialog,
         )
         composer = MainWindowUIComposer(
             app_name=self.app_name,
@@ -140,6 +141,7 @@ class MainWindow(QMainWindow):
         self.worker_manager = factory.create_worker_manager(
             temp_cleaner=self.temp_cleaner,
             progress_bar=self.ui.progress_bar,
+            stage_progress_widget=self.ui.stage_progress,
             on_text_update=self.update_text,
             on_status_update=self.update_status,
             on_error=self.show_error,
@@ -147,6 +149,9 @@ class MainWindow(QMainWindow):
             on_json_ready=self.json_data_ready,
             on_button_state_change=self.state_manager.set_button_states,
             on_preview_clear=self.state_manager.clear_previews,
+            on_stage_progress=self._handle_stage_progress,
+            on_overall_progress=self._handle_overall_progress,
+            on_template_ready=self._handle_template_ready,
         )
         self.config_manager = factory.create_configuration_manager(
             parent_widget=self,
@@ -204,17 +209,40 @@ class MainWindow(QMainWindow):
         """Show the about dialog."""
         self.dialog_manager.show_about()
 
+    def show_pipeline_config_dialog(self) -> None:
+        """Show the pipeline configuration dialog."""
+        self.dialog_manager.show_pipeline_config()
+
     def select_file(self) -> None:
         """Handle file selection for a single PDF."""
         file_path = self.file_operations_manager.select_single_file()
         if file_path:
-            self.worker_manager.start_single_file_processing(file_path)
+            processing_mode = self._get_processing_mode()
+            self.worker_manager.start_single_file_processing(
+                file_path, processing_mode=processing_mode
+            )
 
     def select_multiple_files(self) -> None:
         """Handle selection of multiple PDF files for batch processing."""
         file_paths = self.file_operations_manager.select_multiple_files()
         if file_paths:
-            self.worker_manager.start_batch_processing(file_paths)
+            processing_mode = self._get_processing_mode()
+            self.worker_manager.start_batch_processing(
+                file_paths, processing_mode=processing_mode
+            )
+
+    def _get_processing_mode(self) -> str:
+        """Get the selected processing mode from UI.
+
+        Returns:
+            "standard" or "advanced_pipeline"
+        """
+        if (
+            hasattr(self.ui, "pipeline_mode_radio")
+            and self.ui.pipeline_mode_radio.isChecked()
+        ):
+            return "advanced_pipeline"
+        return "standard"
 
     def json_data_ready(self, json_data: dict[str, Any]) -> None:
         """Handle JSON data ready from worker thread.
@@ -279,6 +307,84 @@ class MainWindow(QMainWindow):
             event: Close event
         """
         self.lifecycle_manager.on_window_close(event)
+
+    def _handle_stage_progress(
+        self, stage_name: str, progress: int, status_text: str
+    ) -> None:
+        """Handle stage-specific progress updates.
+
+        Args:
+            stage_name: Stage name
+            progress: Progress percentage (0-100)
+            status_text: Status message
+        """
+        if hasattr(self.ui, "stage_progress"):
+            self.ui.stage_progress.update_stage(stage_name, progress, status_text)
+
+    def _handle_overall_progress(self, progress: int) -> None:
+        """Handle overall progress updates.
+
+        Args:
+            progress: Overall progress percentage (0-100)
+        """
+        if hasattr(self.ui, "stage_progress"):
+            self.ui.stage_progress.update_overall(progress)
+        # Also update standard progress bar for compatibility
+        if hasattr(self.ui, "progress_bar"):
+            self.ui.progress_bar.setValue(progress)
+
+    def _handle_template_ready(self, template_dict: dict[str, Any]) -> None:
+        """Handle template ready signal.
+
+        Args:
+            template_dict: Template metadata dictionary
+        """
+        if hasattr(self.ui, "template_preview") and self.ui.template_preview:
+            # Format template information for display
+            template_text = self._format_template_preview(template_dict)
+            self.ui.template_preview.setPlainText(template_text)
+
+    def _format_template_preview(self, template_dict: dict[str, Any]) -> str:
+        """Format template information for preview display.
+
+        Args:
+            template_dict: Template metadata dictionary
+
+        Returns:
+            Formatted template preview text
+        """
+        body_bounds = template_dict.get("body_bounds", {})
+        lines = [
+            "Template Preview",
+            "=" * 50,
+            "",
+            f"Confidence: {template_dict.get('confidence', 0.0):.2f}",
+            f"Pages Analysed: {template_dict.get('pages_analysed', 0)}",
+            "",
+            "Body Region:",
+            f"  Left: {body_bounds.get('left', 0)}",
+            f"  Right: {body_bounds.get('right', 0)}",
+            f"  Top: {body_bounds.get('top', 0)}",
+            f"  Bottom: {body_bounds.get('bottom', 0)}",
+            "",
+            "Page Dimensions:",
+            f"  Width: {template_dict.get('page_width', 0)}",
+            f"  Height: {template_dict.get('page_height', 0)}",
+            "",
+            "Zone Boundaries:",
+            f"  Header Bottom: {template_dict.get('header_bottom', 0)}",
+            f"  Footer Top: {template_dict.get('footer_top', 0)}",
+            f"  Left Margin Right: {template_dict.get('left_margin_right', 0)}",
+            f"  Right Margin Left: {template_dict.get('right_margin_left', 0)}",
+            "",
+            "Features:",
+            f"  Line Numbers (Left): {template_dict.get('has_line_numbers_left', False)}",
+            f"  Line Numbers (Right): {template_dict.get('has_line_numbers_right', False)}",
+            f"  Footnotes: {template_dict.get('has_footnotes', False)}",
+            "",
+            "Note: Visual overlay can be generated using the template visualizer.",
+        ]
+        return "\n".join(lines)
 
     def debug_markdown(self) -> None:
         """Run a debug test of the markdown conversion directly from the UI."""

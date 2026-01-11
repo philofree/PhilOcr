@@ -135,7 +135,7 @@ overall_progress_signal = pyqtSignal(int)  # Overall 0-100%
 
 ---
 
-### 4. **Processing Mode Selector** ⚠️ MEDIUM PRIORITY
+### 4. **Processing Mode Selector** ⚠️ HIGH PRIORITY
 
 **Current State**:
 - Single processing path (direct Document AI)
@@ -147,11 +147,11 @@ overall_progress_signal = pyqtSignal(int)  # Overall 0-100%
 **UI Element**:
 ```
 Processing Mode:
-○ Standard OCR (Direct Document AI) [Default]
+○ Standard OCR (Direct Document AI)
 ● Advanced Pipeline (Template-based masking)
 
-[Info] The advanced pipeline provides better contamination
-      exclusion but takes longer to process.
+[Info] The advanced pipeline analyzes page layout to detect text
+      blocks and generate templates for contamination exclusion.
 ```
 
 **Location**: Main window header, above file selection buttons
@@ -160,6 +160,12 @@ Processing Mode:
 - Add to `MainWindowUIComposer._setup_header()` or separate section
 - Store preference in config: `processing.processing_mode`
 - Route to appropriate workflow in `ProcessingWorker`
+
+**Key Difference from Current System**:
+- **Current (Standard OCR)**: PDF → Document AI OCR → Extract blocks/layout from OCR results → Structure post-processing
+- **Advanced Pipeline**: PDF → Image processing → Detect block map/layout from page images → Generate template → Mask non-body regions → OCR only body regions → Assemble text
+
+**Template Extraction**: The image processor analyzes normalised page images to detect the block map/layout of text regions using projection profiles and zone detection algorithms. This layout analysis (Stage 2a) identifies where body text, headers, footers, margins, and footnotes appear, then generates a statistical template from multiple sample pages. This template is used to mask non-body regions before OCR, preventing contamination from line numbers, page numbers, etc.
 
 ---
 
@@ -257,9 +263,9 @@ Genre Hints:
 ## Implementation Priority
 
 ### Phase 1: Essential (Week 1-2)
-1. **Multi-stage progress widget** - Users need feedback during long processing
-2. **Processing mode selector** - Allow gradual migration
-3. **Basic pipeline config** - Minimal configuration (presets only)
+1. **Multi-stage progress widget** - Need feedback during long processing
+2. **Processing mode selector** - UI selector for Standard vs Advanced Pipeline
+3. **Basic pipeline config** - Configuration dialog with sensible defaults
 
 ### Phase 2: Important (Week 2-3)
 4. **Full pipeline config dialog** - All tunable parameters
@@ -277,17 +283,17 @@ Genre Hints:
 
 ### Preserve Existing Behavior
 
-1. **Default to Standard Mode**: Existing users see no change unless they opt in
-2. **Same Output Formats**: Text/Markdown/HTML/JSON unchanged
-3. **Same Signals**: `ProcessingWorker` interface remains compatible
-4. **Config Migration**: Existing config files load without errors
+1. **Same Output Formats**: Text/Markdown/HTML/JSON unchanged
+2. **Same Signals**: `ProcessingWorker` interface remains compatible
+3. **Config Migration**: Existing config files load without errors
 
-### Migration Path
+### Migration Path (Single User Context)
 
-1. User installs update → Standard mode (no change)
-2. User explores "Advanced Pipeline" option → Sees benefits
-3. User configures pipeline settings → Uses advanced mode
-4. Results show pipeline metadata → User can compare quality
+Since there's only one user, you can:
+- Start with advanced pipeline as default once ready (or keep both modes for testing)
+- Directly configure pipeline settings without worrying about multiple user preferences
+- Skip mode selector entirely if you always want to use the new pipeline
+- Test both modes side-by-side during development, then switch default when satisfied
 
 ---
 
@@ -354,8 +360,14 @@ pipeline:  # New section
 
 ## Summary
 
-**Minimum Viable Integration**: Multi-stage progress + mode selector + basic config  
-**Full Integration**: All 6 UI changes above  
+**Minimum Viable Integration**: Multi-stage progress + processing mode selector + pipeline config dialog  
+**Full Integration**: All UI changes above  
 **Estimated Effort**: 2-4 weeks depending on polish level
 
-The architecture is sound, but UI changes are essential for user experience. Focus on progress feedback and configuration first, then add visualization features.
+**Key Implementation Notes**:
+- **Template Extraction**: The image processor detects the block map/layout of text regions from uploaded pages using projection profiles and zone detection. This layout analysis generates a statistical template that identifies where body text typically appears.
+- **Processing Mode**: UI selector allows switching between Standard OCR (direct Document AI) and Advanced Pipeline (layout-based template masking)
+- **Configuration**: Full pipeline config dialog with all tunable parameters accessible
+- **Template Visualization**: Critical for validating that layout detection correctly identifies body regions
+
+The architecture is sound, and UI changes are essential. The plan remains the same - no need to hide complexity since there's only one user, but the core implementation approach is unchanged.

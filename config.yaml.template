@@ -13,6 +13,9 @@ processing:
   # API rate limiting settings
   rate_limit_requests_per_minute: 15  # Google Document AI limit
   rate_limit_window_seconds: 60
+  
+  # Processing mode: "standard" (direct Document AI) or "advanced_pipeline" (template-based masking)
+  processing_mode: "standard"  # Options: "standard" | "advanced_pipeline"
 
 # Memory Management
 memory:
@@ -60,6 +63,68 @@ error_handling:
   initial_delay_seconds: 1.0  # Initial delay between retries
   max_delay_seconds: 60.0     # Maximum delay between retries
   backoff_factor: 2.0         # Factor to multiply delay on each retry
+
+# Pipeline Configuration (for advanced_pipeline mode)
+pipeline:
+  # Stage 1: Image Normalisation
+  stage1:
+    target_dpi: 300
+    output_format: "PNG"
+    deskew_threshold: 0.1  # Degrees; only correct if > this
+  
+  # Stage 2a: Zone Detection
+  stage2a:
+    header_search_percent: 0.15  # Search top 15% for header
+    footer_search_percent: 0.15  # Search bottom 15% for footer
+    margin_search_percent: 0.20  # Search outer 20% for margins
+    content_threshold: 0.05  # Min % of row/column that must be ink
+    min_gap_size: 20  # Pixels; minimum gap to consider significant
+    margin_smooth_sigma: 5.0  # Gaussian smoothing sigma for profiles
+    transition_threshold: 0.5  # Gradient threshold for margin boundary
+    margin_default_percent: 0.05  # Default margin if detection fails
+    footnote_search_percent: 0.40  # Search lower 40% of body
+    horizontal_rule_min_width: 0.2  # Min 20% of width for rule
+    footnote_gap_min_size: 30  # Pixels; minimum gap for footnote separator
+  
+  # Stage 2b: Template Extraction
+  stage2b:
+    template_sample_size: 20  # Pages to sample for template
+    template_min_pages: 5  # Minimum pages required
+    template_skip_first: 2  # Skip first N pages (often title/contents)
+    template_skip_last: 2  # Skip last N pages (often index/blank)
+    outlier_threshold: 2.0  # MAD multiplier for outlier detection
+  
+  # Stage 2c: Masking Strategy
+  stage2c:
+    use_cropping: false  # True = crop, False = mask (default)
+    crop_padding: 0  # Extra pixels around body when cropping
+  
+  # Stage 3: OCR
+  stage3:
+    ocr_max_retries: 3
+    ocr_retry_backoff_base: 2.0  # Exponential backoff multiplier
+    ocr_rate_limit_per_minute: 15
+  
+  # Stage 4: Assembly
+  stage4:
+    indent_ratio_threshold_1: 0.02  # < 2% = flush left
+    indent_ratio_threshold_2: 0.06  # < 6% = standard indent
+    verse_avg_line_threshold: 60  # Chars; below suggests verse
+    verse_cv_threshold: 0.3  # Coefficient of variation; below suggests verse
+    speaker_ratio_threshold: 0.15  # Ratio of lines with speaker markers
+    fragment_ratio_threshold: 0.2  # Ratio of fragment markers to paragraphs
+  
+  # Validation
+  validation:
+    min_template_confidence: 0.5  # Below this, use defaults
+    min_ocr_confidence: 0.3  # Below this, flag for review
+    min_genre_confidence: 0.5  # Below this, default to prose
+  
+  # Performance
+  performance:
+    stage1_parallel_workers: 4
+    stage2a_parallel_workers: 4
+    stage3_batch_size: 1  # For future batch API support
 
 # UI/Display Settings
 ui:

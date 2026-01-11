@@ -9,9 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PyQt6.QtWidgets import (
+    QButtonGroup,
     QLabel,
     QProgressBar,
     QPushButton,
+    QRadioButton,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
@@ -19,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from philocr.ui.ui_builder import UIBuilder, UICallbacks
+from philocr.ui.widgets.stage_progress import StageProgressWidget
 
 
 @dataclass
@@ -27,12 +30,14 @@ class MainWindowUI:
 
     Attributes:
         main_widget: Main central widget
-        progress_bar: Progress bar widget
+        progress_bar: Progress bar widget (for standard mode, kept for compatibility)
+        stage_progress: Stage progress widget (for pipeline mode)
         tab_widget: Tab widget container
         text_edit: Text display widget
         markdown_preview: Markdown preview widget
         html_preview: HTML preview widget
         json_preview: JSON preview widget
+        template_preview: Template preview widget (new)
         select_button: Select PDF button
         batch_button: Batch process button
         load_json_button: Load JSON button
@@ -43,15 +48,20 @@ class MainWindowUI:
         clear_button: Clear button
         debug_md_button: Debug markdown button
         status_text: Status label widget
+        mode_selector: Processing mode selector (radio button group)
+        standard_mode_radio: Standard OCR mode radio button
+        pipeline_mode_radio: Advanced Pipeline mode radio button
     """
 
     main_widget: QWidget
     progress_bar: QProgressBar
+    stage_progress: StageProgressWidget
     tab_widget: QTabWidget
     text_edit: QTextEdit
     markdown_preview: QTextEdit
     html_preview: QTextEdit
     json_preview: QTextEdit
+    template_preview: QTextEdit | None
     select_button: QPushButton
     batch_button: QPushButton
     load_json_button: QPushButton
@@ -62,6 +72,9 @@ class MainWindowUI:
     clear_button: QPushButton
     debug_md_button: QPushButton
     status_text: QLabel
+    mode_selector: QWidget
+    standard_mode_radio: QRadioButton
+    pipeline_mode_radio: QRadioButton
 
 
 class MainWindowUIComposer:
@@ -120,18 +133,25 @@ Note:
         main_widget, main_layout = self._setup_main_layout()
 
         self._setup_header(main_layout)
+        mode_selector_widget, mode_radios = self._setup_mode_selector(main_layout)
         buttons = self._setup_buttons(main_layout)
         status_text = self._setup_status_section(main_layout)
         tabs = self._setup_tabs(main_layout)
 
+        # Create stage progress widget
+        stage_progress = StageProgressWidget()
+        stage_progress.setVisible(False)
+
         return MainWindowUI(
             main_widget=main_widget,
             progress_bar=tabs["progress_bar"],
+            stage_progress=stage_progress,
             tab_widget=tabs["tab_widget"],
             text_edit=tabs["text_edit"],
             markdown_preview=tabs["markdown_preview"],
             html_preview=tabs["html_preview"],
             json_preview=tabs["json_preview"],
+            template_preview=tabs.get("template_preview"),
             select_button=buttons["select"],
             batch_button=buttons["batch"],
             load_json_button=buttons["load_json"],
@@ -142,6 +162,9 @@ Note:
             clear_button=buttons["clear"],
             debug_md_button=buttons["debug_md"],
             status_text=status_text,
+            mode_selector=mode_selector_widget,
+            standard_mode_radio=mode_radios["standard"],
+            pipeline_mode_radio=mode_radios["pipeline"],
         )
 
     def setup_initial_content(self, text_edit: QTextEdit) -> None:
@@ -197,9 +220,60 @@ Note:
         main_layout.addWidget(status_frame)
         return status_text
 
+    def _setup_mode_selector(
+        self, main_layout: QVBoxLayout
+    ) -> tuple[QWidget, dict[str, QRadioButton]]:
+        """Set up processing mode selector.
+
+        Args:
+            main_layout: Main layout to add mode selector to
+
+        Returns:
+            Tuple of (mode selector widget, dictionary of radio buttons)
+        """
+        from PyQt6.QtWidgets import QFrame, QHBoxLayout
+
+        mode_frame = QFrame()
+        mode_layout = QHBoxLayout(mode_frame)
+
+        mode_label = QLabel("Processing Mode:")
+        mode_label.setFont(mode_label.font())
+
+        standard_radio = QRadioButton("Standard OCR")
+        standard_radio.setChecked(True)
+        standard_radio.setToolTip("Direct Document AI processing (current behavior)")
+
+        pipeline_radio = QRadioButton("Advanced Pipeline")
+        pipeline_radio.setToolTip("Template-based masking for contamination exclusion")
+
+        mode_group = QButtonGroup()
+        mode_group.addButton(standard_radio, 0)
+        mode_group.addButton(pipeline_radio, 1)
+
+        # Add pipeline config button
+        config_button = QPushButton("Pipeline Config...")
+        config_button.setToolTip(
+            "Configure advanced pipeline parameters (sampling, zones, masking, etc.)"
+        )
+        _ = config_button.clicked.connect(self.ui_builder.on_pipeline_config)
+        config_button.setMaximumWidth(150)
+
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(standard_radio)
+        mode_layout.addWidget(pipeline_radio)
+        mode_layout.addWidget(config_button)
+        mode_layout.addStretch()
+
+        main_layout.addWidget(mode_frame)
+
+        return mode_frame, {
+            "standard": standard_radio,
+            "pipeline": pipeline_radio,
+        }
+
     def _setup_tabs(
         self, main_layout: QVBoxLayout
-    ) -> dict[str, QWidget | QProgressBar | QTabWidget]:
+    ) -> dict[str, QWidget | QProgressBar | QTabWidget | QTextEdit | None]:
         """Set up tab widget and progress bar.
 
         Args:
@@ -221,4 +295,5 @@ Note:
             "markdown_preview": tabs["markdown_preview"],
             "html_preview": tabs["html_preview"],
             "json_preview": tabs["json_preview"],
+            "template_preview": tabs.get("template_preview"),
         }
