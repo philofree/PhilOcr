@@ -1,7 +1,6 @@
 import argparse
 import html
 import json
-import traceback
 from typing import Any
 
 from philocr.processing.parsers.page_parser import PageParser
@@ -83,6 +82,8 @@ class AcademicDocumentParser:
         # Initialize parser components
         self.page_parser = PageParser()
         self.structure_extractor = StructureExtractor()
+        # Initialize px_to_cm conversion factor (used in to_html method)
+        self.px_to_cm: float = PX_TO_CM
 
     def get_pages(self) -> list[dict[str, Any]]:
         """Get all pages from the document."""
@@ -310,15 +311,16 @@ class AcademicDocumentParser:
 
             return result
         except Exception as e:
-            error_details = traceback.format_exc()
             logger.error(
                 "to_markdown_error",
                 error=str(e),
                 error_type=type(e).__name__,
-                traceback=error_details,
                 exc_info=True,
             )
-            return f"Error generating markdown: {str(e)}"
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Markdown conversion failed - {e}") from e
 
     def to_html(self) -> str:
         """Convert the document to HTML with absolute positioning to match original layout."""

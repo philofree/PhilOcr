@@ -77,12 +77,16 @@ def load_env_file(file_path: str = "ENV.local") -> dict[str, str | None]:
             )
 
     except Exception as e:
-        logger.warning(
+        logger.error(
             "user_settings_load_failed",
             error=str(e),
             error_type=type(e).__name__,
             exc_info=True,
         )
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(f"CRITICAL: User settings load failed - {e}") from e
 
     # Then try to load from ENV.local file (for backward compatibility).
     # IMPORTANT: ENV.local should be treated as a fallback and must NOT override
@@ -163,6 +167,12 @@ def load_env_file(file_path: str = "ENV.local") -> dict[str, str | None]:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Environment file load failed for {path} - {e}"
+                ) from e
 
     if not env_file_found:
         logger.warning(
@@ -367,5 +377,11 @@ def find_bundled_credentials() -> str | None:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Credentials creation failed - {e}"
+                ) from e
 
     return None

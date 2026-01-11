@@ -119,23 +119,26 @@ def flush_loggers() -> None:
             try:
                 handler.close()
             except Exception as e:
-                # Log but don't fail - handler cleanup is best-effort
-                logger.warning(
+                logger.error(
                     "logging_handler_close_failed",
                     error=str(e),
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                raise RuntimeError(
+                    f"CRITICAL: Logging handler close failed - {e}"
+                ) from e
 
     # Also flush structlog processors
     try:
         # Clear context to ensure all buffered data is processed
         structlog.get_logger()._context.clear()
     except Exception as e:
-        # Log but don't fail - context clearing is best-effort
-        logger.warning(
+        logger.error(
             "structlog_context_clear_failed",
             error=str(e),
             error_type=type(e).__name__,
             exc_info=True,
         )
+        flush_loggers()
+        raise RuntimeError(f"CRITICAL: Structlog context clear failed - {e}") from e

@@ -37,7 +37,8 @@ class MainWindowUI:
         markdown_preview: Markdown preview widget
         html_preview: HTML preview widget
         json_preview: JSON preview widget
-        template_preview: Template preview widget (new)
+        template_preview_image: Template preview image widget (new)
+        template_preview_text: Template preview text widget (new)
         select_button: Select PDF button
         batch_button: Batch process button
         load_json_button: Load JSON button
@@ -61,7 +62,8 @@ class MainWindowUI:
     markdown_preview: QTextEdit
     html_preview: QTextEdit
     json_preview: QTextEdit
-    template_preview: QTextEdit | None
+    template_preview_image: QLabel | None
+    template_preview_text: QTextEdit | None
     select_button: QPushButton
     batch_button: QPushButton
     load_json_button: QPushButton
@@ -151,7 +153,8 @@ Note:
             markdown_preview=tabs["markdown_preview"],
             html_preview=tabs["html_preview"],
             json_preview=tabs["json_preview"],
-            template_preview=tabs.get("template_preview"),
+            template_preview_image=tabs.get("template_preview_image"),
+            template_preview_text=tabs.get("template_preview_text"),
             select_button=buttons["select"],
             batch_button=buttons["batch"],
             load_json_button=buttons["load_json"],
@@ -295,5 +298,6 @@ Note:
             "markdown_preview": tabs["markdown_preview"],
             "html_preview": tabs["html_preview"],
             "json_preview": tabs["json_preview"],
-            "template_preview": tabs.get("template_preview"),
+            "template_preview_image": tabs.get("template_preview_image"),
+            "template_preview_text": tabs.get("template_preview_text"),
         }

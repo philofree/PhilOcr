@@ -107,12 +107,16 @@ def check_requirements() -> bool:
         )
         return False
     except Exception as e:
-        logger.exception(
+        logger.error(
             "requirements_check_failed",
             error=str(e),
             error_type=type(e).__name__,
+            exc_info=True,
         )
-        return False
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(f"CRITICAL: Requirements check failed - {e}") from e
 
 
 def build_executable() -> bool:

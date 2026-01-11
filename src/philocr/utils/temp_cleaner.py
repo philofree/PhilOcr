@@ -75,7 +75,12 @@ class TempFileCleaner:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                failed_count += 1
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Temp file clean failed for {file_path} - {e}"
+                ) from e
 
         logger.info(
             "temp_files_cleaned_summary",
@@ -120,7 +125,12 @@ class TempFileCleaner:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                failed_count += 1
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Old temp file clean failed for {file_path} - {e}"
+                ) from e
 
         logger.info(
             "old_temp_files_cleaned_summary",

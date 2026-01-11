@@ -51,14 +51,22 @@ try:
         will_use_for="large_file_processing",
         streaming_parser_available=True,
     )
-except ImportError:
+except ImportError as e:
     _ijson_available_check = False
-    logger.warning(
-        "ijson_not_available",
+    logger.error(
+        "ijson_required_but_not_available",
         package_name="ijson",
-        fallback_mode="chunked_processing",
-        streaming_parser_available=False,
+        error=str(e),
+        error_type=type(e).__name__,
+        exc_info=True,
     )
+    from philocr.utils.logging_config import flush_loggers
+
+    flush_loggers()
+    raise RuntimeError(
+        "CRITICAL: ijson is required for large file processing. "
+        "Install with: pip install ijson"
+    ) from e
 
 IJSON_AVAILABLE: bool = _ijson_available_check
 
@@ -242,13 +250,18 @@ class MarkdownHandler:
                         return markdown
 
                 except (OSError, ValueError, KeyError) as e:
-                    logger.warning(
+                    logger.error(
                         "streaming_conversion_failed",
                         error=str(e),
                         error_type=type(e).__name__,
-                        falling_back="chunked_processing",
                         exc_info=True,
                     )
+                    from philocr.utils.logging_config import flush_loggers
+
+                    flush_loggers()
+                    raise RuntimeError(
+                        f"CRITICAL: Streaming conversion failed - {e}"
+                    ) from e
             else:
                 logger.info(
                     "ijson_not_available_using_chunked",
@@ -449,4 +462,4 @@ class MarkdownHandler:
             from philocr.utils.logging_config import flush_loggers
 
             flush_loggers()
-            return f"Debug conversion failed: {str(e)}"
+            raise RuntimeError(f"CRITICAL: Debug conversion failed - {e}") from e

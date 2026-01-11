@@ -48,12 +48,12 @@ class ConfigManager:
 
         return config_dir
 
-    def _ensure_config_dir(self) -> bool:
+    def _ensure_config_dir(self) -> None:
         """
         Ensure the configuration directory exists.
 
-        Returns:
-            bool: True if directory exists or was created successfully, False otherwise
+        Raises:
+            RuntimeError: If directory creation fails
         """
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -68,7 +68,12 @@ class ConfigManager:
                 error=str(e),
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Config directory creation permission denied - {e}"
+            ) from e
         except Exception as e:
             logger.error(
                 "config_dir_create_failed",
@@ -77,7 +82,12 @@ class ConfigManager:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Config directory creation failed - {e}"
+            ) from e
 
     def _get_config_file(self) -> Path:
         """
@@ -174,31 +184,47 @@ class ConfigManager:
         Returns:
             True if successful, False otherwise
         """
-        if not ConfigPathResolver.ensure_config_dir(self.config_dir):
+        try:
+            ConfigPathResolver.ensure_config_dir(self.config_dir)
+        except Exception as e:
             logger.error(
                 "config_save_directory_failed",
                 config_dir=str(self.config_dir),
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Config directory creation failed during save - {e}"
+            ) from e
 
         config_file = self._get_config_file()
-        success = ConfigIO.save_to_file(config, config_file)
+        ConfigIO.save_to_file(config, config_file)
 
-        if success and os.name != "nt":
+        if os.name != "nt":
             # Set restrictive permissions on the file (Unix-like systems)
             try:
                 os.chmod(config_file, 0o600)
             except Exception as e:
-                logger.warning(
+                logger.error(
                     "config_file_permissions_failed",
                     config_file=str(config_file),
                     error=str(e),
+                    error_type=type(e).__name__,
+                    exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
 
-        if success:
-            self._config_loaded = config
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Config file permissions failed - {e}"
+                ) from e
 
-        return success
+        self._config_loaded = config
+        return True
 
     def get_config(self, key: str, default: Any = None) -> Any:
         """
@@ -219,8 +245,20 @@ class ConfigManager:
             for k in keys:
                 value = value[k]
             return value
-        except (KeyError, TypeError):
-            return default
+        except (KeyError, TypeError) as e:
+            logger.error(
+                "config_key_not_found_using_default",
+                key=key,
+                default_value=default,
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Configuration key '{key}' not found and no valid default provided"
+            ) from e
 
     def set_config(self, key: str, value: Any) -> bool:
         """

@@ -41,11 +41,19 @@ class BatchFileHandler:
         Args:
             on_status_update: Callback for status updates
             on_progress_update: Callback for progress updates (0-100)
-            temp_file_manager: Optional TempFileManager instance
+            temp_file_manager: TempFileManager instance (required)
+
+        Raises:
+            ValueError: If temp_file_manager is None
         """
         self.on_status_update = on_status_update
         self.on_progress_update = on_progress_update
-        self.temp_file_manager = temp_file_manager or TempFileManager()
+        if temp_file_manager is None:
+            raise ValueError(
+                "temp_file_manager is required. "
+                "TempFileManager must be provided explicitly."
+            )
+        self.temp_file_manager = temp_file_manager
 
     def count_total_chunks(self, batch_files: list[str], max_pages: int = 15) -> int:
         """Count total chunks needed for all batch files.
@@ -75,8 +83,12 @@ class BatchFileHandler:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                # Assume at least 1 chunk even if we can't determine page count
-                total_chunks += 1
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Failed to determine page count for {file_path} - {e}"
+                ) from e
         return total_chunks
 
     def process_single_file_in_batch(

@@ -20,7 +20,7 @@ else:
 
     logger = get_logger(__name__)
 
-# Try to import yaml, with graceful fallback to JSON if not available
+# Import yaml - required dependency
 _yaml_module: Any | None = None
 _yaml_available: bool = False
 
@@ -29,14 +29,21 @@ try:
 
     _yaml_module = yaml
     _yaml_available = True
-except ImportError:
+except ImportError as e:
     _yaml_available = False
     if not TYPE_CHECKING:
-        logger.warning(
-            "yaml_not_available",
-            fallback="json",
-            suggestion="Install PyYAML for better configuration file readability: pip install pyyaml",
+        logger.error(
+            "yaml_required_but_not_available",
+            error=str(e),
+            error_type=type(e).__name__,
+            exc_info=True,
         )
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(
+            "CRITICAL: PyYAML is required. Install with: pip install pyyaml"
+        ) from e
 
 YAML_AVAILABLE = _yaml_available
 
@@ -180,4 +187,7 @@ class ConfigIO:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Config file save failed - {e}") from e

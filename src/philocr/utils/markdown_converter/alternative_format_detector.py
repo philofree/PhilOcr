@@ -59,5 +59,14 @@ class AlternativeFormatDetector:
                     if isinstance(file_data, dict)
                 )
             )
-        except (KeyError, TypeError):
-            return False
+        except (KeyError, TypeError) as e:
+            logger.error(
+                "format_detection_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Format detection failed - {e}") from e

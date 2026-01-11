@@ -103,6 +103,12 @@ def remove_redundant_files(files_to_remove: list[tuple[str, float]]) -> None:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: File removal failed for {file} - {e}"
+            ) from e
     logger.info("cleanup_removal_completed")
 
 
@@ -120,15 +126,34 @@ def create_backup(files: list[tuple[str, float]]) -> str:
             else:
                 _ = shutil.copy2(file, backup_dir)
             logger.info("file_backed_up", file_path=file, backup_dir=backup_dir)
-        except FileNotFoundError:
-            logger.warning("file_not_found_backup", file_path=file)
+        except FileNotFoundError as e:
+            logger.error(
+                "file_not_found_backup",
+                file_path=file,
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: File not found for backup: {file} - {e}"
+            ) from e
         except PermissionError as e:
             logger.error(
                 "file_backup_permission_denied",
                 file_path=file,
                 error=str(e),
+                error_type=type(e).__name__,
                 exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Permission denied backing up file: {file} - {e}"
+            ) from e
         except Exception as e:
             logger.error(
                 "file_backup_failed",
@@ -137,6 +162,10 @@ def create_backup(files: list[tuple[str, float]]) -> str:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: File backup failed for {file} - {e}") from e
 
     logger.info("cleanup_backup_completed", backup_dir=backup_dir)
     return backup_dir

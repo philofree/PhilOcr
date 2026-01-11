@@ -166,11 +166,18 @@ class ChunkPageProcessor:
             )
 
         except (IndexError, ValueError, AttributeError) as e:
-            logger.warning(
+            logger.error(
                 "implicit_first_chunk_processing_failed",
                 error=str(e),
                 error_type=type(e).__name__,
+                exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Implicit first chunk processing failed - {e}"
+            ) from e
 
     @staticmethod
     def process_documents_with_chunks(

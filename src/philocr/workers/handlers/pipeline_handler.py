@@ -97,6 +97,51 @@ class PipelineHandler:
                 processor_id=processor_id,
             )
 
+            # Generate template visualization before temp dir is deleted
+            visualization_path = None
+            stage1_dir = output_base_dir / "stage1_normalised"
+            sample_image_path = stage1_dir / "page_0000.png"
+            if sample_image_path.exists():
+                try:
+                    import hashlib
+
+                    from philocr.pipeline.utils.template_visualizer import (
+                        visualise_template,
+                    )
+                    from philocr.utils.config_path_resolver import (
+                        ConfigPathResolver,
+                    )
+
+                    # Get cache directory
+                    config_dir = ConfigPathResolver.get_config_directory()
+                    cache_dir = config_dir / "cache"
+                    cache_dir.mkdir(parents=True, exist_ok=True)
+
+                    # Generate visualization path
+                    file_hash = hashlib.md5(
+                        file_path.encode()
+                    ).hexdigest()[:8]
+                    visualization_path = cache_dir / f"template_vis_{file_hash}.png"
+
+                    # Generate visualization
+                    visualise_template(
+                        str(sample_image_path),
+                        document.template,
+                        str(visualization_path),
+                    )
+                    logger.debug(
+                        "template_visualization_generated",
+                        path=str(visualization_path),
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "template_visualization_failed",
+                        error=str(e),
+                        error_type=type(e).__name__,
+                        exc_info=True,
+                    )
+                    # Continue even if visualization fails
+
             # Emit template ready signal
             if self.on_template_ready:
                 template_dict = {
@@ -117,6 +162,8 @@ class PipelineHandler:
                     "has_line_numbers_right": document.template.has_line_numbers_right,
                     "has_footnotes": document.template.has_footnotes,
                 }
+                if visualization_path:
+                    template_dict["visualization_path"] = str(visualization_path)
                 self.on_template_ready(template_dict)
 
             # Update text as we process
@@ -179,10 +226,12 @@ class PipelineHandler:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                all_text += (
-                    f"\n\n--- Document {i+1}: {file_name} " f"(ERROR: {str(e)}) ---\n\n"
-                )
-                self.on_text_update(all_text)
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Batch pipeline processing failed for {file_name} - {e}"
+                ) from e
 
         return all_text, all_json_results
 

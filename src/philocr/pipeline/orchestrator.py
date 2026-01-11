@@ -219,9 +219,10 @@ class PipelineOrchestrator:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            template = get_default_template(
-                normalised_images[0] if normalised_images else None
-            )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Template extraction failed - {e}") from e
 
         # Save template
         Path(output_dir).mkdir(parents=True, exist_ok=True)

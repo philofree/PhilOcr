@@ -268,8 +268,14 @@ class FileOperationsManager:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
                 _ = QMessageBox.critical(
                     self.parent_widget,
                     "Load Error",
                     f"Error loading JSON file: {str(e)}",
                 )
+                raise RuntimeError(
+                    f"CRITICAL: JSON file load failed - {e}"
+                ) from e

@@ -34,6 +34,9 @@ def estimate_memory_usage() -> float:
 
     Returns:
         float: Memory usage in MB
+
+    Raises:
+        RuntimeError: If psutil is not available (required dependency)
     """
     try:
         import psutil
@@ -41,9 +44,21 @@ def estimate_memory_usage() -> float:
         process = psutil.Process(os.getpid())
         memory_info = process.memory_info()
         return float(memory_info.rss / (1024 * 1024))  # Convert to MB
-    except ImportError:
-        logger.warning("psutil_not_available", operation="estimate_memory_usage")
-        return 0.0
+    except ImportError as e:
+        logger.error(
+            "psutil_not_available",
+            operation="estimate_memory_usage",
+            error=str(e),
+            error_type=type(e).__name__,
+            exc_info=True,
+        )
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(
+            "CRITICAL: psutil is required for memory estimation. "
+            "Install with: pip install psutil"
+        ) from e
 
 
 def force_garbage_collection() -> None:
@@ -92,13 +107,21 @@ def determine_processing_mode(file_size_mb: float) -> str:
                     reason="ijson_not_installed",
                 )
                 return "chunked"
-        except ImportError:
-            logger.warning(
+        except ImportError as e:
+            logger.error(
                 "importlib_unavailable",
-                fallback_mode="chunked",
                 file_size_mb=file_size_mb,
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
             )
-            return "chunked"
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                "CRITICAL: importlib.util is required (part of standard library). "
+                f"This indicates a system configuration problem - {e}"
+            ) from e
 
 
 def memory_managed_operation(func: Callable[..., R]) -> Callable[..., R]:
@@ -146,15 +169,30 @@ def check_available_memory() -> float:
 
     Returns:
         float: Available memory in MB
+
+    Raises:
+        RuntimeError: If psutil is not available (required dependency)
     """
     try:
         import psutil
 
         memory = psutil.virtual_memory()
         return float(memory.available / (1024 * 1024))  # Convert to MB
-    except ImportError:
-        logger.warning("psutil_not_available", operation="check_available_memory")
-        return float("inf")  # Assume infinite memory if we can't check
+    except ImportError as e:
+        logger.error(
+            "psutil_not_available",
+            operation="check_available_memory",
+            error=str(e),
+            error_type=type(e).__name__,
+            exc_info=True,
+        )
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(
+            "CRITICAL: psutil is required for memory checking. "
+            "Install with: pip install psutil"
+        ) from e
 
 
 def check_memory_threshold(threshold_mb: float = 100.0) -> bool:

@@ -61,7 +61,10 @@ class FileOperations:
 
             if markdown_length == 0:
                 logger.error("markdown_content_empty_cannot_save", file_path=file_path)
-                return False
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise ValueError(f"CRITICAL: Markdown content is empty, cannot save to {file_path}")
 
             # Write to file
             FileOperations._write_file(file_path, markdown_content)
@@ -81,7 +84,10 @@ class FileOperations:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: File save failed for {file_path} - {e}") from e
 
     @staticmethod
     def save_file(
@@ -154,7 +160,12 @@ class FileOperations:
                     is_empty=markdown_length == 0,
                     starts_with_error=markdown_content.startswith("Error:"),
                 )
-                return False
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise ValueError(
+                    f"CRITICAL: Markdown content is invalid (empty or error) for {output_file_path}"
+                )
 
             FileOperations._write_file(output_file_path, markdown_content)
 
@@ -175,7 +186,12 @@ class FileOperations:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: File not found: {json_file_path} - {e}"
+            ) from e
 
         except PermissionError as e:
             logger.error(
@@ -186,7 +202,12 @@ class FileOperations:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Permission denied for {json_file_path} - {e}"
+            ) from e
 
         except OSError as e:
             logger.error(
@@ -197,7 +218,10 @@ class FileOperations:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: I/O error for {json_file_path} - {e}") from e
 
     @staticmethod
     def _try_regular_conversion(
@@ -237,32 +261,46 @@ class FileOperations:
                 )
                 return True
             else:
-                logger.warning("regular_conversion_failed_or_errors")
-                return False
+                logger.error("regular_conversion_failed_or_errors")
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Regular conversion failed - markdown content is invalid or empty"
+                )
 
         except json.JSONDecodeError as e:
-            logger.warning(
-                "json_decode_error_fallback",
+            logger.error(
+                "json_decode_error",
                 json_file_path=json_file_path,
                 error=str(e),
                 error_type=type(e).__name__,
                 line=e.lineno if hasattr(e, "lineno") else None,
                 column=e.colno if hasattr(e, "colno") else None,
-                falling_back="large_file_processing",
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: JSON decode error in {json_file_path} at line {e.lineno}, "
+                f"column {e.colno} - {e}"
+            ) from e
 
         except (FileNotFoundError, PermissionError, OSError) as e:
-            logger.warning(
-                "regular_conversion_failed_fallback",
+            logger.error(
+                "regular_conversion_failed",
                 json_file_path=json_file_path,
                 error=str(e),
                 error_type=type(e).__name__,
-                falling_back="large_file_processing",
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Regular conversion failed for {json_file_path} - {e}"
+            ) from e
 
     @staticmethod
     def _write_file(file_path: str, content: str) -> None:

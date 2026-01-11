@@ -61,6 +61,7 @@ class FormatDetector:
 
             has_document_data = "document_data" in json_data
             has_files_array = "files" in json_data
+            has_top_level_pages = "pages" in json_data and "text" in json_data
 
             if has_files_array:
                 logger.info(
@@ -70,6 +71,15 @@ class FormatDetector:
 
             if has_document_data:
                 logger.info("standard_json_format_detected", format_type="standard")
+                return FormatType.STANDARD
+
+            # Recognize top-level pages/text format as standard (PhilOcr format)
+            if has_top_level_pages:
+                logger.info(
+                    "standard_json_format_detected",
+                    format_type="standard",
+                    variant="top_level_structure",
+                )
                 return FormatType.STANDARD
 
             logger.warning(
@@ -115,6 +125,11 @@ class FormatDetector:
                 has_pages = "pages" in doc_data
                 if has_pages and isinstance(doc_data["pages"], list):
                     page_count = len(doc_data["pages"])
+            else:
+                # Check for top-level pages when document_data is not present
+                has_pages = "pages" in json_data
+                if has_pages and isinstance(json_data["pages"], list):
+                    page_count = len(json_data["pages"])
 
             structure_info = StructureInfo(
                 has_document_data=has_document_data,
