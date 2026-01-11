@@ -35,12 +35,19 @@ class ProcessingWorker(QThread):
     error_signal = pyqtSignal(str)  # Signal for error messages
     finished_signal = pyqtSignal(bool)  # Signal for processing completion
     json_ready_signal = pyqtSignal(dict)  # Signal for JSON data ready
+    # New signals for pipeline mode
+    stage_progress_signal = pyqtSignal(
+        str, int, str
+    )  # (stage_name, progress, status_text)
+    overall_progress_signal = pyqtSignal(int)  # Overall 0-100%
+    template_ready_signal = pyqtSignal(dict)  # Template metadata for preview
 
     def __init__(
         self,
         file_path: str,
         parent: Any | None = None,
         temp_cleaner: Any | None = None,
+        processing_mode: str = "standard",
     ) -> None:
         """Initialize the ProcessingWorker.
 
@@ -48,6 +55,7 @@ class ProcessingWorker(QThread):
             file_path: Path to the PDF file to process
             parent: Parent QObject
             temp_cleaner: Temporary file cleaner utility
+            processing_mode: Processing mode ("standard" or "advanced_pipeline")
         """
         super().__init__(parent)
         self.file_path: str = file_path
@@ -57,6 +65,7 @@ class ProcessingWorker(QThread):
         self.result_text: str = ""
         self.result_json: dict[str, Any] = {}
         self.metadata: dict[str, Any] = {}
+        self.processing_mode: str = processing_mode
 
         # Initialize handlers
         temp_file_manager = TempFileManager(temp_cleaner)
@@ -96,7 +105,13 @@ class ProcessingWorker(QThread):
         rate_limiter: Any = RateLimiter(MAX_REQUESTS_PER_MINUTE, RATE_LIMIT_SECONDS)
 
         try:
-            if self.batch_mode:
+            # Route to appropriate handler based on mode
+            if self.processing_mode == "advanced_pipeline":
+                if self.batch_mode:
+                    self._process_batch_pipeline()
+                else:
+                    self._process_single_pipeline()
+            elif self.batch_mode:
                 self._process_batch_delegated(rate_limiter)
             else:
                 self._process_single_delegated(rate_limiter)
@@ -221,6 +236,155 @@ class ProcessingWorker(QThread):
             self.error_signal.emit(str(worker_error))
             flush_loggers()
             raise worker_error from e
+
+    def _process_single_pipeline(self) -> None:
+        """Process a single file using advanced pipeline mode.
+
+        Uses PipelineHandler to execute the 4-stage pipeline.
+        """
+        from philocr.models.config_loader import load_pipeline_config
+        from philocr.utils.config_manager import get_config_manager
+        from philocr.workers.handlers.pipeline_handler import PipelineHandler
+
+        try:
+            file_name = os.path.basename(self.file_path)
+            self.status_signal.emit(f"Processing with advanced pipeline: {file_name}")
+            logger.debug(
+                "pipeline_processing_started",
+                file_path=self.file_path,
+                file_name=file_name,
+            )
+
+            # Load pipeline config
+            config_manager = get_config_manager()
+            config_dict = config_manager.load_config()
+            pipeline_config = load_pipeline_config(config_dict)
+
+            # Create pipeline handler
+            pipeline_handler = PipelineHandler(
+                config=pipeline_config,
+                on_status_update=self.status_signal.emit,
+                on_progress_update=self.overall_progress_signal.emit,
+                on_text_update=self.update_signal.emit,
+                on_stage_progress=self.stage_progress_signal.emit,
+                on_template_ready=self.template_ready_signal.emit,
+            )
+
+            # Process file
+            extracted_text, document_json = pipeline_handler.process_single_file(
+                self.file_path, file_name
+            )
+
+            if extracted_text:
+                self.update_signal.emit(extracted_text)
+            else:
+                self.update_signal.emit("No text extracted from document.")
+
+            self.status_signal.emit("Pipeline processing completed.")
+
+            # Store results
+            self.result_text = extracted_text or ""
+            self.result_json = document_json
+            self.json_ready_signal.emit(document_json)
+
+        except Exception as e:
+            logger.error(
+                "pipeline_processing_error",
+                file_path=self.file_path,
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            self.error_signal.emit(str(e))
+            flush_loggers()
+            raise WorkerError(f"Pipeline processing failed: {e}") from e
+
+    def _process_batch_pipeline(self) -> None:
+        """Process multiple files using advanced pipeline mode.
+
+        Uses PipelineHandler to execute the 4-stage pipeline for each file.
+        """
+        from philocr.models.config_loader import load_pipeline_config
+        from philocr.utils.config_manager import get_config_manager
+        from philocr.workers.handlers.pipeline_handler import PipelineHandler
+
+        try:
+            # Load pipeline config
+            config_manager = get_config_manager()
+            config_dict = config_manager.load_config()
+            pipeline_config = load_pipeline_config(config_dict)
+
+            # Create pipeline handler
+            pipeline_handler = PipelineHandler(
+                config=pipeline_config,
+                on_status_update=self.status_signal.emit,
+                on_progress_update=self.overall_progress_signal.emit,
+                on_text_update=self.update_signal.emit,
+                on_stage_progress=self.stage_progress_signal.emit,
+                on_template_ready=self.template_ready_signal.emit,
+            )
+
+            all_text = ""
+            all_json_results: list[dict[str, Any]] = []
+            total_files = len(self.batch_files)
+
+            for i, file_path in enumerate(self.batch_files):
+                file_name = os.path.basename(file_path)
+                self.status_signal.emit(
+                    f"Processing {i+1} of {total_files}: {file_name}"
+                )
+
+                try:
+                    file_text, file_json = pipeline_handler.process_single_file(
+                        file_path, file_name
+                    )
+
+                    all_text += f"\n\n--- Document {i+1}: {file_name} ---\n\n"
+                    all_text += file_text
+                    all_json_results.append(file_json)
+                    self.update_signal.emit(all_text)
+
+                except Exception as e:
+                    logger.error(
+                        "batch_pipeline_file_error",
+                        file_index=i + 1,
+                        file_name=file_name,
+                        error=str(e),
+                        exc_info=True,
+                    )
+                    all_text += (
+                        f"\n\n--- Document {i+1}: {file_name} "
+                        f"(ERROR: {str(e)}) ---\n\n"
+                    )
+                    self.update_signal.emit(all_text)
+
+            # Finalize batch results using result processor
+            self.result_text = all_text
+            self.result_json = self.result_processor.finalize_batch_result(
+                all_text=all_text,
+                all_json_results=all_json_results,
+                metadata=self.metadata,
+                total_files=total_files,
+                total_chunks=total_files,  # Each file is one "chunk" in pipeline mode
+                on_json_ready=self.json_ready_signal.emit,
+                on_status_update=self.status_signal.emit,
+                on_progress_update=self.overall_progress_signal.emit,
+            )
+
+            self.status_signal.emit(
+                f"Batch pipeline processing completed: {total_files} files"
+            )
+
+        except Exception as e:
+            logger.error(
+                "batch_pipeline_processing_error",
+                total_files=len(self.batch_files),
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            flush_loggers()
+            raise WorkerError(f"Batch pipeline processing failed: {e}") from e
 
     def _process_batch_delegated(self, rate_limiter: Any) -> None:
         """Process multiple PDF files in batch mode by delegating to handlers.

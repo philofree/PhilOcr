@@ -97,6 +97,26 @@ class TabFactory:
         return json_preview
 
     @staticmethod
+    def create_template_preview_tab(tab_widget: QTabWidget) -> QTextEdit:
+        """Create the template preview tab.
+
+        Args:
+            tab_widget: The tab widget to add the tab to
+
+        Returns:
+            The text edit widget for the template preview tab
+        """
+        template_tab = QWidget()
+        template_layout = QVBoxLayout(template_tab)
+        template_preview = WidgetFactory.create_text_edit()
+        template_preview.setPlainText(
+            "Template preview will appear here after pipeline processing."
+        )
+        template_layout.addWidget(template_preview)
+        _ = tab_widget.addTab(template_tab, "Template Preview")
+        return template_preview
+
+    @staticmethod
     def create_all_tabs() -> tuple[QTabWidget, dict[str, Any]]:
         """Create all preview tabs.
 
@@ -110,5 +130,6 @@ class TabFactory:
         tabs["markdown_preview"] = TabFactory.create_markdown_tab(tab_widget)
         tabs["html_preview"] = TabFactory.create_html_tab(tab_widget)
         tabs["json_preview"] = TabFactory.create_json_tab(tab_widget)
+        tabs["template_preview"] = TabFactory.create_template_preview_tab(tab_widget)
 
         return tab_widget, tabs

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import time
 from collections import deque
@@ -216,6 +218,13 @@ def _process_document_with_client(
                 f"Configured location={location!r}, api_endpoint={api_endpoint!r}. "
                 f"Raw error: {error_msg}"
             ) from e
+        logger.error(
+            "document_ai_invalid_argument",
+            error=error_msg,
+            error_type=type(e).__name__,
+            exc_info=True,
+        )
+        flush_loggers()
         raise PDFProcessingError("", f"Invalid argument: {error_msg}") from e
     except google_exceptions.NotFound as e:
         error_msg = str(e)
@@ -234,6 +243,13 @@ def _process_document_with_client(
             f"Google Cloud Console. Error: {error_msg}"
         ) from e
     except Exception as e:
+        logger.error(
+            "document_processing_failed",
+            error=str(e),
+            error_type=type(e).__name__,
+            exc_info=True,
+        )
+        flush_loggers()
         raise PDFProcessingError("", f"Document processing failed: {str(e)}") from e
 
 
