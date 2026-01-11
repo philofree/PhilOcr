@@ -45,12 +45,20 @@ class SingleFileHandler:
             on_status_update: Callback for status updates
             on_progress_update: Callback for progress updates (0-100)
             on_text_update: Callback for text content updates
-            temp_file_manager: Optional TempFileManager instance
+            temp_file_manager: TempFileManager instance (required)
+
+        Raises:
+            ValueError: If temp_file_manager is None
         """
         self.on_status_update = on_status_update
         self.on_progress_update = on_progress_update
         self.on_text_update = on_text_update
-        self.temp_file_manager = temp_file_manager or TempFileManager()
+        if temp_file_manager is None:
+            raise ValueError(
+                "temp_file_manager is required. "
+                "TempFileManager must be provided explicitly."
+            )
+        self.temp_file_manager = temp_file_manager
 
     def get_page_count(self, file_path: str) -> int:
         """Get page count for a PDF file.

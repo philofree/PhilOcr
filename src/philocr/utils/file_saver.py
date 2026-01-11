@@ -59,7 +59,10 @@ class MarkdownFileSaver:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                return False
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(f"CRITICAL: Markdown file save failed - {e}") from e
 
         if fallback_json:
             logger.info(

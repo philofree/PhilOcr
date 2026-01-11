@@ -23,7 +23,14 @@ metadata:
   adapted_from: "norms_exception_handling copy.md"
   status: "AUTHORITATIVE"
   scope: "ALL AI agents working on PhilOcr project"
-  enforcement: "MANDATORY - No exceptions"
+  enforcement: "MANDATORY - Zero Tolerance Policy"
+  zero_tolerance_policy: |
+    PhilOcr has a ZERO TOLERANCE policy for:
+    - Silent failures (errors that are caught and ignored)
+    - Graceful degradation (trying to continue with degraded functionality)
+    - Swallowed exceptions (exceptions caught but not logged or re-raised)
+    
+    ALL failures MUST fail loudly, visibly, and immediately. There are NO exceptions.
   project_context: |
     PhilOcr: OCR processing application for ancient Greek texts
     - Google Document AI API integration
@@ -32,11 +39,41 @@ metadata:
     - Greek Unicode and polytonic character handling
 
 ################################################################################
+# ZERO TOLERANCE POLICY
+################################################################################
+
+zero_tolerance_policy:
+  statement: |
+    PhilOcr has a ZERO TOLERANCE policy for silent failures, graceful degradation,
+    and error swallowing. ALL failures MUST fail loudly, visibly, and immediately.
+
+  absolute_prohibitions:
+    - "Silent failures: Errors that are caught and ignored (pass, continue without logging)"
+    - "Graceful degradation: Attempting to continue with degraded functionality when errors occur"
+    - "Swallowed exceptions: Exceptions caught but not logged or re-raised"
+    - "Fallback behavior: Trying to continue with alternative behavior when primary operation fails"
+    
+  enforcement: |
+    This is a ZERO TOLERANCE policy. There are NO exceptions, NO edge cases,
+    NO "just this once" scenarios. Silent failures are absolutely forbidden.
+
+  rationale: |
+    Silent failures and graceful degradation create false success states where
+    the system appears to work but produces incorrect or corrupted output. For
+    OCR processing, this means corrupted text extraction, lost Greek characters,
+    or incomplete PDF processing that only becomes apparent when users examine
+    the output. A crashed system is visible and can be fixed. A silently failing
+    system creates corrupt state that manifests later and is much harder to debug.
+
+################################################################################
 # CORE PRINCIPLE: FAIL FAST, NOT SILENT
 ################################################################################
 
 core_principle:
-  statement: "If an operation fails, it MUST fail loudly and visibly. Silent failures are worse than crashes."
+  statement: |
+    If an operation fails, it MUST fail loudly and visibly. Silent failures,
+    graceful degradation, and error swallowing are absolutely forbidden.
+    This is a ZERO TOLERANCE policy.
 
   why_fail_fast:
     - "Silent failures hide bugs - Errors that are caught and ignored create corrupt state"
@@ -51,8 +88,13 @@ core_principle:
     that only becomes apparent when users examine the output.
 
 ################################################################################
-# BANNED PATTERNS (ABSOLUTELY FORBIDDEN)
+# BANNED PATTERNS (ZERO TOLERANCE - ABSOLUTELY FORBIDDEN)
 ################################################################################
+
+banned_patterns_intro: |
+  The following patterns are ABSOLUTELY FORBIDDEN under our ZERO TOLERANCE policy.
+  These patterns represent silent failures, graceful degradation, or error swallowing,
+  and are never acceptable in PhilOcr code.
 
 banned_patterns:
 
@@ -130,7 +172,7 @@ banned_patterns:
   pattern_3_silent_swallowing:
     title: "Silent Swallowing (`pass`, `continue`, `return None`)"
     severity: "CRITICAL"
-    description: "Errors are completely hidden. System continues in corrupt state."
+    description: "Errors are completely hidden. System continues in corrupt state. This is graceful degradation and is FORBIDDEN."
 
     wrong: |
       # BANNED - Silent failure
@@ -182,10 +224,58 @@ banned_patterns:
           continue
       # RuntimeError, ValueError, OSError propagate (fail fast)
 
-  pattern_4_failfast_contradiction:
+  pattern_4_graceful_degradation:
+    title: "Graceful Degradation (Trying to Continue with Degraded Functionality)"
+    severity: "CRITICAL"
+    description: "Attempting to continue with alternative behavior or degraded functionality when primary operation fails. This is ABSOLUTELY FORBIDDEN under zero tolerance policy."
+
+    wrong: |
+      # BANNED - Graceful degradation (FORBIDDEN)
+      try:
+          result = process_document_advanced(file_path)
+      except Exception:
+          # Fall back to basic processing - GRACEFUL DEGRADATION FORBIDDEN
+          result = process_document_basic(file_path)  # ❌
+          logger.warning("Fell back to basic processing")
+
+      # BANNED - Trying alternative behavior on failure
+      try:
+          client = get_preferred_client()
+      except Exception:
+          # Fall back to alternative client - GRACEFUL DEGRADATION FORBIDDEN
+          client = get_fallback_client()  # ❌
+
+    why_banned: |
+      Graceful degradation creates false success states. The system appears to work
+      but is using degraded or incorrect functionality. Errors are hidden, making
+      debugging impossible. For OCR processing, this could mean using incorrect
+      processing methods that produce corrupted output.
+
+    correct: |
+      # CORRECT - Fail loudly, do not degrade
+      try:
+          result = process_document_advanced(file_path)
+      except Exception as e:
+          logger.error(
+              "advanced_processing_failed",
+              file_path=file_path,
+              error=str(e),
+              error_type=type(e).__name__,
+              exc_info=True,
+          )
+          raise RuntimeError(
+              f"CRITICAL: Advanced processing failed - {e}. "
+              "Cannot continue with degraded functionality."
+          ) from e
+
+    zero_tolerance_reminder: |
+      This is a ZERO TOLERANCE policy. Do NOT attempt graceful degradation.
+      If the primary operation fails, the system MUST fail loudly and immediately.
+
+  pattern_5_failfast_contradiction:
     title: "Fail-Fast Contradiction (Function Says Fail-Fast But Caller Catches)"
     severity: "HIGH"
-    description: "Function explicitly says 'system corruption, cannot continue' but caller catches and continues"
+    description: "Function explicitly says 'system corruption, cannot continue' but caller catches and continues (graceful degradation)"
 
     wrong: |
       # Function says "FAIL FAST" but caller catches and continues
@@ -533,12 +623,13 @@ common_mistakes:
           raise RuntimeError(f"CRITICAL: Processing failed - {e}") from e
 
 ################################################################################
-# GUARDIAN DETECTION (PLANNED)
+# GUARDIAN ENFORCEMENT
 ################################################################################
 
-guardian_detection:
-  guardian_name: "guardian_silent_failures"
-  status: "PLANNED - To be implemented for PhilOcr"
+guardian_enforcement:
+  guardian_file: "guardians/guardian_010_catch_all_exceptions.py"
+  guardian_name: "CatchAllExceptionGuardian"
+  status: "IMPLEMENTED - Active enforcement"
 
   detects:
     - "Bare `except:`"
@@ -553,8 +644,16 @@ guardian_detection:
     - "Main loops without exception handlers"
     - "Re-raise without flushing logger"
 
-  planned_enhancements: |
-    Enhance guardian to detect fail-fast contradiction pattern:
+  usage: |
+    Run the guardian to verify compliance:
+
+    python guardians/guardian_010_catch_all_exceptions.py
+
+    Expected output:
+    ✅ No broad exception handlers or silent failures detected
+
+  future_enhancements: |
+    Potential enhancements to detect fail-fast contradiction pattern:
     - Function comments containing "FAIL FAST", "system corruption", "cannot continue"
     - Function re-raising RuntimeError with "CRITICAL" message
     - Caller catching RuntimeError and continuing (contradiction)
@@ -589,18 +688,24 @@ cross_references:
 ################################################################################
 
 summary: |
-  1. **Fail fast, not silent** - Errors must be visible and logged
-  2. **Specific exceptions** - Catch only what you can handle
-  3. **Re-raise by default** - Unless you're handling the error properly
-  4. **Align intent** - Don't contradict function's documented fail-fast behavior
-  5. **Transient errors only** - Only ConnectionError for partial failure tolerance
-  6. **Log before exit** - Top-level handlers must log and flush before re-raising
+  ZERO TOLERANCE POLICY - ABSOLUTELY NO EXCEPTIONS:
+  
+  1. **Fail fast, not silent** - Errors must be visible and logged (ZERO TOLERANCE)
+  2. **No graceful degradation** - Do NOT attempt to continue with degraded functionality (ZERO TOLERANCE)
+  3. **No error swallowing** - ALL exceptions must be logged and re-raised (ZERO TOLERANCE)
+  4. **Specific exceptions** - Catch only what you can handle
+  5. **Re-raise by default** - Unless you're handling the error properly
+  6. **Align intent** - Don't contradict function's documented fail-fast behavior
+  7. **Transient errors only** - Only ConnectionError for partial failure tolerance (and even then, fail fast if rate is too high)
+  8. **Log before exit** - Top-level handlers must log and flush before re-raising
 
-  **Remember:** Silent failures are worse than crashes. A crashed system is visible
-  and can be fixed. A silently failing system creates corrupt state that manifests
-  later. For OCR processing: silent failures mean corrupted text extraction, lost
-  Greek characters, or incomplete PDF processing that only becomes apparent when
-  users examine the output.
+  **ZERO TOLERANCE REMINDER:** Silent failures, graceful degradation, and error
+  swallowing are ABSOLUTELY FORBIDDEN. A crashed system is visible and can be fixed.
+  A silently failing system creates corrupt state that manifests later. For OCR
+  processing: silent failures mean corrupted text extraction, lost Greek characters,
+  or incomplete PDF processing that only becomes apparent when users examine the output.
+  
+  This policy has NO exceptions.
 
 ################################################################################
 # CANONICAL NOTICE

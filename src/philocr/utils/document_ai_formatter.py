@@ -39,6 +39,14 @@ if not os.path.exists(backup_file):
             error_type=type(e).__name__,
             exc_info=True,
         )
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(f"CRITICAL: Formatter backup failed - {e}") from e
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(f"CRITICAL: Formatter backup failed - {e}") from e
 
 
 # Extremely simplified formatter - only extracts text and creates basic HTML

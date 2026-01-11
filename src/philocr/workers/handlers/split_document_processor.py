@@ -152,7 +152,7 @@ class SplitDocumentProcessor:
                 )
                 all_text += f"An error occurred while processing this section: {str(e)}"
             except Exception as e:
-                # Catch unexpected errors for this chunk but continue processing
+                # Fail fast per zero tolerance policy
                 logger.error(
                     "chunk_processing_unexpected_error",
                     chunk_number=i + 1,
@@ -161,10 +161,12 @@ class SplitDocumentProcessor:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                start_page = i * max_pages + 1
-                end_page = min((i + 1) * max_pages, page_count)
-                all_text += f"\n\n--- Unexpected error processing pages {start_page} to {end_page} ---\n\n"
-                all_text += f"An unexpected error occurred: {str(e)}"
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Chunk processing failed for chunk {i + 1} - {e}"
+                ) from e
 
             self.temp_file_manager.cleanup_chunk_file(chunk_path, file_path)
 

@@ -48,17 +48,22 @@ def load_latest_summary_report() -> dict[str, Any] | None:
     except Exception as e:
         # Get logger here since function may be called before main() configures logging
         if not TYPE_CHECKING:
-            from philocr.utils.logging_config import get_logger
+            from philocr.utils.logging_config import get_logger, flush_loggers
 
             log = get_logger(__name__)
         else:
             log = logger  # type: ignore[used-before-def]
-        log.warning(
+        log.error(
             "summary_report_load_failed",
             error=str(e),
             error_type=type(e).__name__,
+            exc_info=True,
         )
-        return None
+        if not TYPE_CHECKING:
+            flush_loggers()
+        raise RuntimeError(
+            f"CRITICAL: Failed to load summary report - {e}"
+        ) from e
 
 
 def main() -> int:

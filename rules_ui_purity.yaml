@@ -1,0 +1,425 @@
+# PHILOCR UI PURITY DOCTRINE
+# The UI Layer Must Remain a Thin Delegation Wrapper
+#
+# Version: 1.0.0
+# Date: 2026-01-11
+#
+# Cross-references:
+#   - rules_frontend_boundary.yaml (import boundary enforcement)
+#   - guardians/guardian_030_ui_purity.py (automated enforcement)
+
+################################################################################
+# METADATA & OVERVIEW
+################################################################################
+
+metadata:
+  title: "PhilOcr UI Purity Doctrine - Thin Wrapper Architecture"
+  version: "1.0.0"
+  created: "2026-01-11"
+  status: "AUTHORITATIVE"
+  scope: "ALL UI layer code in src/philocr/ui/"
+  enforcement: "MANDATORY - No exceptions"
+  project_context: |
+    PhilOcr: OCR processing application for ancient Greek texts
+    - PyQt6 desktop UI
+    - Processing workers for document operations
+    - Utils layer for cross-cutting concerns
+    - Strict separation between UI and business logic
+
+################################################################################
+# CORE PRINCIPLE: UI AS THIN DELEGATION WRAPPER
+################################################################################
+
+core_principle:
+  statement: "The UI layer must remain a thin delegation wrapper. Complex logic belongs in workers/utils."
+
+  architecture_model: |
+    UI Layer (src/philocr/ui/)
+    ├── Receives user input
+    ├── Delegates to workers/utils
+    ├── Updates UI state based on results
+    └── Handles user-facing error messages
+
+    Workers Layer (src/philocr/workers/)
+    ├── Contains business logic
+    ├── Processes documents
+    ├── Handles async operations
+    └── Returns structured results
+
+    Utils Layer (src/philocr/utils/)
+    ├── Cross-cutting utilities
+    ├── File I/O operations
+    ├── Configuration management
+    └── Reusable helpers
+
+  why_thin_wrapper:
+    - "Testability: Business logic can be tested without UI dependencies"
+    - "Maintainability: Clear separation of concerns"
+    - "Reusability: Workers can be used in headless/CLI modes"
+    - "Debuggability: Issues are isolated to specific layers"
+    - "Flexibility: UI can be swapped without changing business logic"
+
+################################################################################
+# BANNED PATTERNS (ABSOLUTELY FORBIDDEN)
+################################################################################
+
+banned_patterns:
+
+  pattern_1_complex_business_logic:
+    title: "Complex Business Logic in UI Methods"
+    severity: "HIGH"
+    description: "Processing operations, data transformations, or complex algorithms in UI methods"
+
+    wrong: |
+      # BANNED - Business logic in UI
+      def on_file_selected(self, file_path: str):
+          # Complex processing logic in UI method
+          with open(file_path, 'r') as f:
+              content = f.read()
+          # Parse and process content...
+          processed = complex_parsing_logic(content)
+          # Transform data...
+          formatted = format_data(processed)
+          self.display_result(formatted)
+
+    correct: |
+      # CORRECT - Delegation to worker
+      def on_file_selected(self, file_path: str):
+          self.worker.process_file(file_path)
+          # Worker emits signal with result
+          # UI updates based on signal
+
+    forbidden_operations:
+      - "Document processing (PDF parsing, OCR operations)"
+      - "Data transformation and formatting"
+      - "Complex algorithms or calculations"
+      - "Business rule validation"
+      - "File parsing or parsing logic"
+
+  pattern_2_direct_processing_calls:
+    title: "Direct Processing Operations in UI"
+    severity: "HIGH"
+    description: "Calling processing modules directly from UI code"
+
+    wrong: |
+      # BANNED - Direct processing import in UI
+      from philocr.processing.document_ai import process_document
+      
+      def process_file(self, file_path: str):
+          result = process_document(file_path)  # Direct call
+          self.update_display(result)
+
+    correct: |
+      # CORRECT - Use worker for processing
+      def process_file(self, file_path: str):
+          self.worker.start_processing(file_path)
+          # Worker handles processing and emits signals
+
+  pattern_3_complex_iteration:
+    title: "Complex Iteration Logic in UI"
+    severity: "HIGH"
+    description: "Complex loops that process data (unless UI-specific like iterating widgets)"
+
+    wrong: |
+      # BANNED - Complex data iteration
+      def update_previews(self, documents: list[Document]):
+          for doc in documents:
+              # Complex processing logic...
+              processed = process_document(doc)
+              formatted = format_result(processed)
+              self.add_preview(formatted)
+
+    correct: |
+      # CORRECT - Delegate to worker or use simple UI iteration
+      def update_previews(self, previews: list[PreviewData]):
+          for preview in previews:  # Simple UI iteration
+              self.add_preview_widget(preview)
+
+  pattern_4_excessive_method_length:
+    title: "UI Methods Exceeding Length Thresholds"
+    severity: "HIGH"
+    description: "UI methods that are too long, indicating complex logic"
+
+    thresholds:
+      max_lines_simple: 15
+      max_lines_with_exception: 25
+      rationale: |
+        Simple delegation methods should be short. Exception handling
+        adds complexity but is acceptable for user-facing error handling.
+
+################################################################################
+# REQUIRED PATTERNS
+################################################################################
+
+required_patterns:
+
+  pattern_1_simple_delegation:
+    title: "Simple Delegation to Workers"
+    description: "UI methods should simply delegate to workers and handle signals"
+
+    correct: |
+      def process_file(self, file_path: str):
+          """Initiate file processing via worker."""
+          self.worker.process_file(file_path)
+
+      def on_processing_complete(self, result: ProcessingResult):
+          """Handle processing completion signal."""
+          self.update_display(result)
+          self.show_success_message()
+
+  pattern_2_signal_connections:
+    title: "Signal-Based Communication"
+    description: "Use Qt signals/slots for async communication between UI and workers"
+
+    correct: |
+      def __init__(self):
+          self.worker = ProcessingWorker()
+          self.worker.processing_complete.connect(self.on_processing_complete)
+          self.worker.error_occurred.connect(self.on_error)
+
+  pattern_3_simple_ui_logic:
+    title: "UI-Specific Logic Only"
+    description: "Only UI state management, widget updates, and user feedback"
+
+    acceptable_ui_operations:
+      - "Widget creation and configuration"
+      - "Signal/slot connections"
+      - "Dialog creation and display"
+      - "UI state updates (enabled/disabled, visible/hidden)"
+      - "User feedback (messages, progress indicators)"
+      - "Simple data binding to widgets"
+      - "Event routing to appropriate handlers"
+
+  pattern_4_exception_handling:
+    title: "User-Facing Exception Handling"
+    description: "Exception handling for user feedback is acceptable in UI"
+
+    correct: |
+      def save_file(self, file_path: str):
+          """Save file with user-friendly error handling."""
+          try:
+              self.file_saver.save(file_path)
+              self.show_success_message("File saved successfully")
+          except PermissionError:
+              self.show_error("Permission denied. Please check file permissions.")
+          except Exception as e:
+              self.show_error(f"Failed to save file: {e}")
+
+    rationale: |
+      Exception handling in UI is acceptable when it provides user feedback.
+      The threshold is relaxed to 25 lines to accommodate try/except blocks.
+
+################################################################################
+# ACCEPTABLE UI PATTERNS
+################################################################################
+
+acceptable_patterns:
+  
+  dialogs_and_forms:
+    - "QFileDialog for file selection"
+    - "Custom dialog creation"
+    - "Form building and validation (UI-level only)"
+    - "User input collection"
+
+  signal_connections:
+    - "Connecting worker signals to UI slots"
+    - "Connecting widget signals to handlers"
+    - "Emitting UI events for coordination"
+
+  widget_management:
+    - "Creating and configuring widgets"
+    - "Adding widgets to layouts"
+    - "Updating widget properties (text, enabled, visible)"
+    - "Simple iteration over widgets (for UI purposes)"
+
+  state_management:
+    - "Enabling/disabling buttons based on state"
+    - "Showing/hiding UI elements"
+    - "Updating progress indicators"
+    - "Managing UI-only state (selected tab, open dialogs)"
+
+  utility_calls:
+    - "Calling utils for simple operations (formatting, validation)"
+    - "Using utility functions that don't involve business logic"
+    - "File I/O utilities (simple save/load operations)"
+
+################################################################################
+# METHOD LENGTH GUIDELINES
+################################################################################
+
+method_length_guidelines:
+  simple_delegation: |
+    Simple delegation methods should be 1-5 lines:
+    
+    def process_file(self, file_path: str):
+        self.worker.process_file(file_path)
+
+  with_signal_handling: |
+    Methods that handle signals and update UI can be 5-15 lines:
+    
+    def on_processing_complete(self, result: ProcessingResult):
+        self.update_display(result)
+        self.status_label.setText("Processing complete")
+        self.progress_bar.setValue(100)
+        self.save_button.setEnabled(True)
+
+  with_exception_handling: |
+    Methods with exception handling can be up to 25 lines:
+    
+    def save_file(self, file_path: str):
+        try:
+            self.file_saver.save(file_path)
+            self.show_success_message("File saved")
+        except PermissionError:
+            self.show_error("Permission denied")
+        except Exception as e:
+            logger.error("save_failed", error=str(e))
+            self.show_error(f"Save failed: {e}")
+
+  red_flags: |
+    If a UI method exceeds 25 lines, it likely contains:
+    - Complex business logic (move to worker)
+    - Complex iteration (move to worker/utils)
+    - Complex conditional logic (move decision-making to backend)
+    - Multiple responsibilities (split into multiple methods)
+
+################################################################################
+# DECISION TREE: DOES THIS BELONG IN UI?
+################################################################################
+
+decision_tree: |
+  Does this code update UI widgets directly?
+  ├─ YES → Continue below
+  └─ NO → Does NOT belong in UI layer
+
+  Does this code involve business logic or data processing?
+  ├─ YES → Move to workers/utils layer
+  └─ NO → Continue below
+
+  Does this code involve complex iteration or algorithms?
+  ├─ YES → Move to workers/utils layer
+  └─ NO → Continue below
+
+  Is this code longer than 15 lines (25 with exception handling)?
+  ├─ YES → Review for refactoring opportunities
+  └─ NO → Acceptable for UI layer
+
+  ✅ Code belongs in UI layer if:
+  - Updates widgets, layouts, or UI state
+  - Handles user input and events
+  - Creates dialogs and forms
+  - Connects signals and slots
+  - Provides user feedback
+  - Delegates processing to workers
+
+################################################################################
+# REFACTORING STRATEGIES
+################################################################################
+
+refactoring_strategies:
+
+  extract_to_worker:
+    pattern: "Complex processing logic in UI method"
+    steps:
+      1. "Identify the business logic in the UI method"
+      2. "Create a worker method to handle the logic"
+      3. "Replace UI logic with delegation to worker"
+      4. "Use signals to communicate results back to UI"
+
+  extract_to_utils:
+    pattern: "Reusable utility code in UI"
+    steps:
+      1. "Identify utility functionality"
+      2. "Extract to appropriate utils module"
+      3. "Import and call from UI (simple delegation)"
+
+  split_method:
+    pattern: "UI method doing multiple things"
+    steps:
+      1. "Identify distinct responsibilities"
+      2. "Split into multiple focused methods"
+      3. "Each method handles one UI concern"
+
+  simplify_conditionals:
+    pattern: "Complex conditional logic in UI"
+    steps:
+      1. "Move decision logic to backend (worker/utils)"
+      2. "Backend returns simple result/status"
+      3. "UI handles result display only"
+
+################################################################################
+# GUARDIAN ENFORCEMENT
+################################################################################
+
+guardian_enforcement:
+  guardian_file: "guardians/guardian_030_ui_purity.py"
+  guardian_name: "UIPurityGuardian"
+  status: "IMPLEMENTED - Active enforcement"
+
+  detects:
+    - "UI methods exceeding 15 lines (25 with exception handling)"
+    - "Complex business logic in UI methods"
+    - "Direct processing operations in UI"
+    - "Complex iteration loops (non-UI specific)"
+    - "Complex conditional logic beyond simple UI state checks"
+
+  thresholds:
+    max_method_lines: 15
+    max_method_lines_with_exception: 25
+    ui_directory: "src/philocr/ui/"
+
+  usage: |
+    Run the guardian to verify compliance:
+
+    python guardians/guardian_030_ui_purity.py
+
+    Expected output:
+    ✅ UI layer maintains thin-wrapper purity!
+
+################################################################################
+# CROSS-REFERENCES
+################################################################################
+
+cross_references:
+  frontend_boundary:
+    path: "rules_frontend_boundary.yaml"
+    relationship: "Import boundary enforcement - UI cannot import backend processing modules"
+
+  exception_handling:
+    path: "rules_exception_handling.yaml"
+    relationship: "Exception handling patterns for user-facing errors in UI"
+
+  structured_logging:
+    path: "rules_structured_logging.yaml"
+    relationship: "Logging patterns for UI error handling"
+
+################################################################################
+# SUMMARY
+################################################################################
+
+summary: |
+  The UI layer in PhilOcr must remain a thin delegation wrapper:
+
+  1. **UI methods should be short** (≤15 lines, ≤25 with exception handling)
+  2. **Delegate business logic** to workers layer
+  3. **Use signals/slots** for async communication
+  4. **Handle UI concerns only**: widgets, dialogs, user feedback, state management
+  5. **Keep processing logic** out of UI code
+
+  This architecture enables:
+  - Testable business logic (without UI dependencies)
+  - Reusable workers (for headless/CLI modes)
+  - Maintainable separation of concerns
+  - Flexible UI implementations
+
+  Remember: If you're writing complex logic in a UI method, ask "Does this belong in a worker?"
+
+canonical_notice: |
+  This is the canonical UI purity guide for the PhilOcr codebase.
+
+  All UI layer code in src/philocr/ui/ must follow these standards. The UI layer
+  must remain a thin delegation wrapper that delegates business logic to workers
+  and utils layers.
+
+  For import boundary enforcement, see: rules_frontend_boundary.yaml
+  For exception handling patterns, see: rules_exception_handling.yaml

@@ -1,0 +1,63 @@
+---
+description: General coding standards and formatting requirements
+globs: "**/*.py"
+alwaysApply: true
+priority: medium
+---
+
+# General Coding Standards
+
+**REQUIRED**: Follow these general coding standards for all Python code.
+
+## Formatting
+
+1. **Black (88-column)**
+   - Format with Black (88-column limit)
+   - Run: `python -m black <file>`
+
+2. **Import Sorting**
+   - Sort imports with isort (Black profile)
+   - Run: `python -m isort <file>`
+
+3. **Linting**
+   - Auto-fix lint issues with Ruff
+   - Run: `ruff --fix <file>`
+
+## Type Annotations
+
+1. **Pyright Strict**
+   - Add type annotations so code passes `pyright --strict`
+   - All public functions/classes must have type hints
+   - Use `from __future__ import annotations` for forward references
+
+2. **Type Checking**
+   - Run: `pyright --strict <file>`
+   - All code must pass strict type checking
+
+## Documentation
+
+1. **Docstrings**
+   - All public functions/classes must have docstrings
+   - Use Google-style docstrings
+   - Include Args, Returns, Raises sections where applicable
+
+2. **Enforcement**
+   - Automated by `guardian_065_docstring_completeness.py`
+
+## Line Length
+
+- **Maximum 88 columns per line** (Black standard)
+- Wrap long lines appropriately
+- Use parentheses for line continuation
+
+## Import Organization
+
+1. **Import Order**
+   - Standard library imports
+   - Third-party imports
+   - Local application imports
+
+2. **Import Style**
+   - Use absolute imports
+   - Group imports with blank lines
+   - Sort within groups alphabetically

@@ -1,0 +1,633 @@
+# PHILOCR DODGY FALLBACK DOCTRINE
+# Infrastructure Must Fail Loudly, Not Silently
+#
+# Version: 1.0.0
+# Date: 2026-01-11
+#
+# Cross-references:
+#   - rules_exception_handling.yaml (fail-fast philosophy)
+#   - guardians/guardian_044_dodgy_fallback.py (automated enforcement)
+
+################################################################################
+# METADATA & OVERVIEW
+################################################################################
+
+metadata:
+  title: "PhilOcr Dodgy Fallback Doctrine - Fail Fast, Not Silent"
+  version: "1.0.0"
+  created: "2026-01-11"
+  status: "AUTHORITATIVE"
+  scope: "ALL code in PhilOcr project"
+  enforcement: "MANDATORY - Zero Tolerance Policy"
+  zero_tolerance_policy: |
+    PhilOcr has a ZERO TOLERANCE policy for:
+    - Dodgy fallbacks (creating infrastructure instances in fallback patterns)
+    - Silent fallbacks (automatically creating default instances when infrastructure is missing)
+    - Graceful degradation (trying to continue with degraded infrastructure)
+    
+    ALL infrastructure failures MUST fail loudly and immediately. There are NO exceptions.
+  project_context: |
+    PhilOcr: OCR processing application for ancient Greek texts
+    - Google Document AI API integration
+    - File processing and management
+    - Configuration and credential management
+    - Infrastructure components must fail loudly when misconfigured
+
+################################################################################
+# ZERO TOLERANCE POLICY
+################################################################################
+
+zero_tolerance_policy:
+  statement: |
+    PhilOcr has a ZERO TOLERANCE policy for dodgy fallbacks, silent fallbacks,
+    and graceful degradation of infrastructure. ALL infrastructure failures MUST
+    fail loudly and immediately.
+
+  absolute_prohibitions:
+    - "Dodgy fallbacks: Creating infrastructure instances in fallback patterns (x or SomeClass())"
+    - "Silent fallbacks: Automatically creating default instances when infrastructure is missing"
+    - "Graceful degradation: Trying to continue with degraded or default infrastructure"
+    - "Lazy initialization: Creating infrastructure instances on first access without validation"
+    
+  enforcement: |
+    This is a ZERO TOLERANCE policy. There are NO exceptions, NO edge cases,
+    NO "just this once" scenarios. Dodgy fallbacks and graceful degradation
+    are absolutely forbidden.
+
+  rationale: |
+    Silent fallbacks and graceful degradation hide configuration errors and system
+    problems. When infrastructure is missing or misconfigured, the system MUST fail
+    immediately with a clear error message. Attempting to continue with default or
+    degraded infrastructure creates false success states where the system appears to
+    work but may be using incorrect or invalid infrastructure.
+
+################################################################################
+# CORE PRINCIPLE: INFRASTRUCTURE MUST FAIL LOUDLY
+################################################################################
+
+core_principle:
+  statement: |
+    Infrastructure components must fail loudly when missing or misconfigured.
+    Silent fallbacks, dodgy fallbacks, and graceful degradation are absolutely
+    forbidden. This is a ZERO TOLERANCE policy.
+
+  fail_fast_philosophy: |
+    Infrastructure failures (missing managers, clients, connections) indicate
+    configuration errors or system problems. These errors must be visible and
+    explicit, not hidden by automatic fallback creation.
+
+  why_forbidden: |
+    Silent fallbacks create false success:
+    - Configuration errors go undetected
+    - System runs with wrong/invalid infrastructure
+    - Problems manifest later as subtle bugs
+    - Debugging becomes impossible (no error logs)
+    - Production issues are hard to diagnose
+
+  analogy: |
+    Like a Formula One car: if fuel isn't connected, the car should fail to start,
+    not silently create a mock fuel system. The driver needs to know the problem
+    immediately so it can be fixed.
+
+################################################################################
+# BANNED PATTERNS (ZERO TOLERANCE - ABSOLUTELY FORBIDDEN)
+################################################################################
+
+banned_patterns_intro: |
+  The following patterns are ABSOLUTELY FORBIDDEN under our ZERO TOLERANCE policy.
+  These patterns represent dodgy fallbacks, silent fallbacks, or graceful degradation,
+  and are never acceptable in PhilOcr code.
+
+banned_patterns:
+
+  pattern_1_or_fallback_creation:
+    title: "Boolean OR Fallback Creating Infrastructure (`x or SomeClass()`)"
+    severity: "CRITICAL"
+    description: "Creating infrastructure instances in boolean OR fallback patterns"
+
+    wrong: |
+      # BANNED - Creates infrastructure silently
+      def get_document_ai_client(self):
+          return self._client or DocumentAIClient()  # ❌ Creates if missing
+
+      # BANNED - Creates manager silently
+      temp_file_manager = temp_file_manager or TempFileManager()  # ❌
+
+    correct: |
+      # CORRECT - Fail loudly if missing
+      def get_document_ai_client(self) -> DocumentAIClient:
+          if self._client is None:
+              raise RuntimeError(
+                  "Document AI client not initialized. "
+                  "Call initialize_client() first."
+              )
+          return self._client
+
+      # CORRECT - Explicit initialization
+      if temp_file_manager is None:
+          raise RuntimeError("TempFileManager must be provided")
+
+    infrastructure_components:
+      - "Manager (TempFileManager, ConfigManager, etc.)"
+      - "Store (DataStore, CacheStore, etc.)"
+      - "Router (MessageRouter, etc.)"
+      - "Provider (ConfigProvider, etc.)"
+      - "Client (DocumentAIClient, APIClient, etc.)"
+      - "Database (DatabaseConnection, etc.)"
+      - "Connection (NetworkConnection, etc.)"
+      - "Session (SessionManager, etc.)"
+      - "Cache (CacheManager, etc.)"
+      - "Index (SearchIndex, etc.)"
+      - "Processor (DocumentProcessor, etc.)"
+      - "Handler (FileHandler, etc.)"
+      - "Service (ProcessingService, etc.)"
+
+  pattern_2_ternary_fallback_creation:
+    title: "Ternary Fallback Creating Infrastructure (`x if cond else SomeClass()`)"
+    severity: "CRITICAL"
+    description: "Creating infrastructure instances in ternary expressions"
+
+    wrong: |
+      # BANNED - Creates infrastructure in ternary
+      client = existing_client if existing_client else DocumentAIClient()  # ❌
+
+    correct: |
+      # CORRECT - Explicit validation
+      if existing_client is None:
+          raise RuntimeError("DocumentAIClient must be provided")
+      client = existing_client
+
+  pattern_3_dict_get_fallback:
+    title: "dict.get() with Creation Default"
+    severity: "HIGH"
+    description: "Using dict.get() with infrastructure creation as default"
+
+    wrong: |
+      # BANNED - Creates infrastructure in dict.get()
+      config = settings.get('processor', DocumentProcessor())  # ❌
+
+    correct: |
+      # CORRECT - Use None default, then validate
+      processor_class = settings.get('processor')
+      if processor_class is None:
+          raise RuntimeError("processor configuration is required")
+      processor = processor_class()
+
+  pattern_4_getattr_fallback:
+    title: "getattr() with Creation Default"
+    severity: "CRITICAL"
+    description: "Using getattr() with infrastructure creation as default"
+
+    wrong: |
+      # BANNED - Creates infrastructure in getattr()
+      client = getattr(obj, 'client', DocumentAIClient())  # ❌
+
+    correct: |
+      # CORRECT - Use None default, then validate
+      client = getattr(obj, 'client', None)
+      if client is None:
+          raise RuntimeError("client attribute is required")
+      return client
+
+  pattern_5_getattr_non_none_default:
+    title: "getattr() with Non-None Default for Infrastructure"
+    severity: "HIGH"
+    description: "Using getattr() with non-None default value for infrastructure attributes"
+
+    wrong: |
+      # BANNED - Non-None default for infrastructure
+      manager = getattr(config, 'manager', 'default')  # ❌
+
+    correct: |
+      # CORRECT - Use None, then validate
+      manager = getattr(config, 'manager', None)
+      if manager is None:
+          raise RuntimeError("manager configuration is required")
+
+################################################################################
+# REQUIRED PATTERNS
+################################################################################
+
+required_patterns:
+
+  pattern_1_explicit_validation:
+    title: "Explicit Validation and Error Messages"
+    description: "Explicitly check for None and raise descriptive errors"
+
+    correct: |
+      def get_document_ai_client(self) -> DocumentAIClient:
+          """Get Document AI client, raising error if not initialized."""
+          if self._client is None:
+              raise RuntimeError(
+                  "Document AI client not initialized. "
+                  "Ensure GOOGLE_APPLICATION_CREDENTIALS is set and "
+                  "initialize_client() has been called."
+              )
+          return self._client
+
+    benefits:
+      - "Clear error messages help diagnose configuration issues"
+      - "Failures are visible immediately"
+      - "No silent incorrect behavior"
+
+  pattern_2_dependency_injection:
+    title: "Dependency Injection Pattern"
+    description: "Require dependencies as explicit parameters"
+
+    correct: |
+      class DocumentProcessor:
+          def __init__(
+              self,
+              client: DocumentAIClient,  # Required parameter
+              temp_manager: TempFileManager,  # Required parameter
+          ):
+              if client is None:
+                  raise ValueError("client is required")
+              if temp_manager is None:
+                  raise ValueError("temp_manager is required")
+              
+              self._client = client
+              self._temp_manager = temp_manager
+
+    benefits:
+      - "Dependencies are explicit and visible"
+      - "Cannot be used without proper initialization"
+      - "Testing is easier (inject mocks/test doubles)"
+
+  pattern_3_initialization_methods:
+    title: "Explicit Initialization Methods"
+    description: "Use initialization methods instead of lazy creation"
+
+    correct: |
+      class ProcessingWorker:
+          def __init__(self):
+              self._client: DocumentAIClient | None = None
+          
+          def initialize(self, credentials_path: str) -> None:
+              """Initialize Document AI client with credentials."""
+              if not Path(credentials_path).exists():
+                  raise FileNotFoundError(
+                      f"Credentials file not found: {credentials_path}"
+                  )
+              self._client = DocumentAIClient(credentials_path)
+          
+          def process_document(self, file_path: str):
+              if self._client is None:
+                  raise RuntimeError(
+                      "Client not initialized. Call initialize() first."
+                  )
+              return self._client.process(file_path)
+
+    benefits:
+      - "Initialization is explicit and visible"
+      - "Errors occur at initialization time, not later"
+      - "Clear separation between setup and usage"
+
+  pattern_4_factory_functions:
+    title: "Factory Functions for Complex Initialization"
+    description: "Use factory functions for complex infrastructure setup"
+
+    correct: |
+      def create_document_processor(
+          credentials_path: str,
+          config_path: str,
+      ) -> DocumentProcessor:
+          """Create and configure DocumentProcessor."""
+          # Validate inputs
+          if not Path(credentials_path).exists():
+              raise FileNotFoundError(f"Credentials not found: {credentials_path}")
+          if not Path(config_path).exists():
+              raise FileNotFoundError(f"Config not found: {config_path}")
+          
+          # Create dependencies
+          client = DocumentAIClient(credentials_path)
+          config = load_config(config_path)
+          temp_manager = TempFileManager(config.temp_dir)
+          
+          # Create processor with explicit dependencies
+          return DocumentProcessor(client, temp_manager)
+
+    benefits:
+      - "Complex initialization logic is encapsulated"
+      - "Errors occur at creation time"
+      - "Dependencies are explicit and validated"
+
+################################################################################
+# INFRASTRUCTURE COMPONENT DEFINITIONS
+################################################################################
+
+infrastructure_components:
+  definition: |
+    Infrastructure components are system-level components that:
+    - Manage resources (files, connections, caches)
+    - Provide services to application code
+    - Require configuration or initialization
+    - Should fail loudly if missing or misconfigured
+
+  component_list:
+    managers:
+      - "TempFileManager"
+      - "ConfigManager"
+      - "MemoryManager"
+      - "SessionManager"
+      - "CacheManager"
+    
+    clients:
+      - "DocumentAIClient"
+      - "APIClient"
+      - "DatabaseClient"
+    
+    processors:
+      - "DocumentProcessor"
+      - "FileProcessor"
+      - "DataProcessor"
+    
+    handlers:
+      - "FileHandler"
+      - "ErrorHandler"
+      - "LogHandler"
+    
+    services:
+      - "ProcessingService"
+      - "ValidationService"
+      - "NotificationService"
+    
+    stores:
+      - "DataStore"
+      - "CacheStore"
+      - "ConfigStore"
+    
+    connections:
+      - "DatabaseConnection"
+      - "NetworkConnection"
+      - "APIConnection"
+
+  detection_patterns:
+    class_names:
+      - "Ends with Manager, Client, Processor, Handler, Service, Store"
+      - "Contains Connection, Provider, Router, Cache, Index"
+    
+    naming_conventions:
+      - "Infrastructure classes typically use PascalCase"
+      - "Infrastructure instances typically use snake_case with component type"
+
+################################################################################
+# ALLOWED PATTERNS (Non-Infrastructure)
+################################################################################
+
+allowed_patterns:
+
+  pattern_1_simple_defaults:
+    title: "Simple Default Values (Non-Infrastructure)"
+    description: "Default values for simple data types are acceptable"
+
+    correct: |
+      # ALLOWED - Simple defaults for non-infrastructure
+      timeout = settings.get('timeout', 30)  # ✅ Simple value
+      max_retries = config.get('max_retries', 3)  # ✅ Simple value
+      enable_cache = getattr(options, 'cache', True)  # ✅ Boolean default
+
+    rationale: |
+      Simple defaults (numbers, strings, booleans) don't hide configuration
+      errors. They provide reasonable defaults for optional settings.
+
+  pattern_2_none_checks:
+    title: "None Checks with Explicit Errors"
+    description: "Using None as default, then explicitly checking"
+
+    correct: |
+      # ALLOWED - None default with explicit check
+      processor = config.get('processor', None)
+      if processor is None:
+          raise RuntimeError("processor configuration is required")
+
+    rationale: |
+      Using None as default and then explicitly checking is acceptable.
+      The key is that errors are explicit, not hidden.
+
+################################################################################
+# DECISION TREE: IS THIS A DODGY FALLBACK?
+################################################################################
+
+decision_tree: |
+  Does this code create an infrastructure component (Manager, Client, Processor, etc.)?
+  ├─ NO → Continue below
+  └─ YES → Is it created in a fallback pattern?
+      ├─ YES → ❌ DODGY FALLBACK (forbidden)
+      └─ NO → Continue below
+
+  Is it created in boolean OR? (x or SomeClass())
+  ├─ YES → Is SomeClass infrastructure? → ❌ FORBIDDEN
+  └─ NO → Continue below
+
+  Is it created in ternary? (x if cond else SomeClass())
+  ├─ YES → Is SomeClass infrastructure? → ❌ FORBIDDEN
+  └─ NO → Continue below
+
+  Is it created in dict.get()? (dict.get('key', SomeClass()))
+  ├─ YES → Is SomeClass infrastructure? → ❌ FORBIDDEN
+  └─ NO → Continue below
+
+  Is it created in getattr()? (getattr(obj, 'attr', SomeClass()))
+  ├─ YES → Is SomeClass infrastructure? → ❌ FORBIDDEN
+  └─ NO → Continue below
+
+  ✅ ACCEPTABLE if:
+  - Infrastructure is created explicitly (not in fallback)
+  - Dependencies are injected as parameters
+  - Initialization is explicit and validated
+  - Errors are raised explicitly (not hidden)
+
+################################################################################
+# REFACTORING STRATEGIES
+################################################################################
+
+refactoring_strategies:
+
+  strategy_1_explicit_validation:
+    before: |
+      client = self._client or DocumentAIClient()
+    
+    after: |
+      if self._client is None:
+          raise RuntimeError("Document AI client not initialized")
+      client = self._client
+
+  strategy_2_dependency_injection:
+    before: |
+      class Processor:
+          def process(self):
+              client = self._client or DocumentAIClient()
+    
+    after: |
+      class Processor:
+          def __init__(self, client: DocumentAIClient):
+              if client is None:
+                  raise ValueError("client is required")
+              self._client = client
+          
+          def process(self):
+              return self._client.process()
+
+  strategy_3_initialization_method:
+    before: |
+      def get_manager(self):
+          return self._manager or TempFileManager()
+    
+    after: |
+      def initialize_manager(self, temp_dir: str):
+          if not Path(temp_dir).exists():
+              raise FileNotFoundError(f"Temp directory not found: {temp_dir}")
+          self._manager = TempFileManager(temp_dir)
+      
+      def get_manager(self) -> TempFileManager:
+          if self._manager is None:
+              raise RuntimeError("Manager not initialized. Call initialize_manager() first.")
+          return self._manager
+
+################################################################################
+# COMMON MISTAKES
+################################################################################
+
+common_mistakes:
+
+  mistake_1_lazy_initialization:
+    wrong: |
+      # WRONG - Lazy initialization hides errors
+      def get_client(self):
+          if self._client is None:
+              self._client = DocumentAIClient()  # Creates without validation
+          return self._client
+
+    fix: |
+      # CORRECT - Explicit initialization with validation
+      def initialize_client(self, credentials_path: str):
+          if not Path(credentials_path).exists():
+              raise FileNotFoundError(f"Credentials not found: {credentials_path}")
+          self._client = DocumentAIClient(credentials_path)
+      
+      def get_client(self) -> DocumentAIClient:
+          if self._client is None:
+              raise RuntimeError("Client not initialized. Call initialize_client() first.")
+          return self._client
+
+  mistake_2_optional_infrastructure:
+    wrong: |
+      # WRONG - Making infrastructure optional with fallback
+      def process(self, file_path: str, client: DocumentAIClient | None = None):
+          client = client or DocumentAIClient()  # Creates if None
+
+    fix: |
+      # CORRECT - Require infrastructure explicitly
+      def process(self, file_path: str, client: DocumentAIClient):
+          if client is None:
+              raise ValueError("client is required")
+          return client.process(file_path)
+
+  mistake_3_config_fallbacks:
+    wrong: |
+      # WRONG - Creating infrastructure from config with fallback
+      processor = config.get('processor', DocumentProcessor())
+
+    fix: |
+      # CORRECT - Validate config, then create explicitly
+      processor_class_name = config.get('processor')
+      if processor_class_name is None:
+          raise RuntimeError("processor configuration is required")
+      processor = create_processor(processor_class_name)
+
+################################################################################
+# GUARDIAN ENFORCEMENT
+################################################################################
+
+guardian_enforcement:
+  guardian_file: "guardians/guardian_044_dodgy_fallback.py"
+  guardian_name: "DodgyFallbackGuardian"
+  status: "IMPLEMENTED - Active enforcement"
+
+  detects:
+    - "Boolean OR fallbacks creating infrastructure (`x or SomeClass()`)"
+    - "Ternary fallbacks creating infrastructure (`x if cond else SomeClass()`)"
+    - "dict.get() with infrastructure creation default"
+    - "getattr() with infrastructure creation default"
+    - "getattr() with non-None default for infrastructure attributes"
+
+  severity_levels:
+    critical: "Infrastructure creation in fallbacks"
+    high: "dict.get() and getattr() fallbacks"
+    medium: "Non-infrastructure fallbacks (less severe but discouraged)"
+
+  infrastructure_components:
+    - "Manager, Store, Router, Provider"
+    - "Client, Database, Connection, Session"
+    - "Cache, Index, Processor, Handler, Service"
+
+  usage: |
+    Run the guardian to verify compliance:
+
+    python guardians/guardian_044_dodgy_fallback.py
+
+    Expected output:
+    ✅ No dodgy fallback patterns detected!
+
+################################################################################
+# CROSS-REFERENCES
+################################################################################
+
+cross_references:
+  exception_handling:
+    path: "rules_exception_handling.yaml"
+    relationship: "Fail-fast philosophy - infrastructure errors should fail loudly"
+
+  ui_purity:
+    path: "rules_ui_purity.yaml"
+    relationship: "UI layer should not create infrastructure - use dependency injection"
+
+  frontend_boundary:
+    path: "rules_frontend_boundary.yaml"
+    relationship: "Boundary components should use explicit initialization"
+
+################################################################################
+# SUMMARY
+################################################################################
+
+summary: |
+  ZERO TOLERANCE POLICY - ABSOLUTELY NO EXCEPTIONS:
+  
+  PhilOcr has a ZERO TOLERANCE policy for dodgy fallbacks, silent fallbacks, and
+  graceful degradation. ALL infrastructure failures MUST fail loudly and immediately.
+
+  1. **Infrastructure must fail loudly** - No silent creation of managers, clients, processors (ZERO TOLERANCE)
+  2. **No graceful degradation** - Do NOT attempt to continue with default/degraded infrastructure (ZERO TOLERANCE)
+  3. **No dodgy fallbacks** - Do NOT create infrastructure in fallback patterns (ZERO TOLERANCE)
+  4. **Use explicit validation** - Check for None and raise descriptive errors
+  5. **Dependency injection** - Require infrastructure as explicit parameters
+  6. **Explicit initialization** - Use initialization methods, not lazy creation
+  7. **Simple defaults OK** - Non-infrastructure defaults (numbers, strings, booleans) are acceptable
+
+  ABSOLUTELY FORBIDDEN patterns (ZERO TOLERANCE):
+  - `x or SomeManager()` - ❌ Creates infrastructure silently (FORBIDDEN)
+  - `x if cond else SomeClient()` - ❌ Creates infrastructure silently (FORBIDDEN)
+  - `dict.get('key', SomeProcessor())` - ❌ Creates infrastructure silently (FORBIDDEN)
+  - `getattr(obj, 'attr', SomeHandler())` - ❌ Creates infrastructure silently (FORBIDDEN)
+  - Lazy initialization without validation - ❌ Graceful degradation (FORBIDDEN)
+
+  This ZERO TOLERANCE policy ensures:
+  - Configuration errors are visible immediately (no hiding)
+  - System failures are explicit, not hidden (no graceful degradation)
+  - Debugging is easier (clear error messages)
+  - Production issues are easier to diagnose (fail fast, fail loud)
+
+  **ZERO TOLERANCE REMINDER:** If infrastructure is missing, the system MUST fail
+  to start immediately with a clear error. Do NOT silently create a default instance.
+  Do NOT attempt graceful degradation. This policy has NO exceptions.
+
+canonical_notice: |
+  This is the canonical dodgy fallback prevention guide for the PhilOcr codebase.
+
+  All code must avoid silent fallback creation of infrastructure components.
+  Infrastructure must fail loudly when missing or misconfigured, enabling
+  immediate detection and diagnosis of configuration errors.
+
+  For fail-fast philosophy, see: rules_exception_handling.yaml
+  For dependency patterns, see: rules_ui_purity.yaml and rules_frontend_boundary.yaml

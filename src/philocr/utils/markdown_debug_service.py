@@ -62,19 +62,16 @@ class MarkdownDebugService:
             debug_result_raw = MarkdownHandler.debug_markdown_conversion()
             return cls.format_debug_result(debug_result_raw, max_preview_length)
         except Exception as e:
-            error_message = f"Error running markdown debug test: {str(e)}"
             logger.error(
                 "debug_markdown_test_failed",
                 error=str(e),
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return MarkdownDebugResult(
-                success=False,
-                full_markdown=None,
-                display_content=f"Error in markdown debug test:\n\n{str(e)}",
-                error_message=error_message,
-            )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Markdown debug test failed - {e}") from e
 
     @classmethod
     def format_debug_result(

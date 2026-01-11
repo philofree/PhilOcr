@@ -87,7 +87,10 @@ def load_application_icon(app: QApplication) -> bool:
             error_type=type(e).__name__,
             exc_info=True,
         )
-        return False
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(f"CRITICAL: Icon load failed - {e}") from e
 
 
 def get_splash_image_path() -> str | None:

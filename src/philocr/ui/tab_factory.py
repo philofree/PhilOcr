@@ -8,7 +8,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from PyQt6.QtWidgets import QTabWidget, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QLabel,
+    QScrollArea,
+    QSplitter,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from philocr.ui.widget_factory import WidgetFactory
 
@@ -97,24 +106,54 @@ class TabFactory:
         return json_preview
 
     @staticmethod
-    def create_template_preview_tab(tab_widget: QTabWidget) -> QTextEdit:
-        """Create the template preview tab.
+    def create_template_preview_tab(
+        tab_widget: QTabWidget,
+    ) -> tuple[QLabel, QTextEdit]:
+        """Create the template preview tab with image and text.
 
         Args:
             tab_widget: The tab widget to add the tab to
 
         Returns:
-            The text edit widget for the template preview tab
+            Tuple of (image_label, text_edit) widgets
         """
         template_tab = QWidget()
-        template_layout = QVBoxLayout(template_tab)
-        template_preview = WidgetFactory.create_text_edit()
-        template_preview.setPlainText(
+        main_layout = QVBoxLayout(template_tab)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create splitter for image and text
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # Image area (left side)
+        image_scroll = QScrollArea()
+        image_scroll.setWidgetResizable(True)
+        image_label = QLabel()
+        image_label.setAlignment(
+            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop
+        )
+        image_label.setText("Template visualization will appear here.")
+        image_label.setStyleSheet("background-color: #f0f0f0; padding: 10px;")
+        image_label.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        image_scroll.setWidget(image_label)
+        splitter.addWidget(image_scroll)
+        splitter.setStretchFactor(0, 2)
+
+        # Text area (right side)
+        text_preview = WidgetFactory.create_text_edit()
+        text_preview.setPlainText(
             "Template preview will appear here after pipeline processing."
         )
-        template_layout.addWidget(template_preview)
+        splitter.addWidget(text_preview)
+        splitter.setStretchFactor(1, 1)
+
+        # Set initial sizes (60% image, 40% text)
+        splitter.setSizes([600, 400])
+
+        main_layout.addWidget(splitter)
         _ = tab_widget.addTab(template_tab, "Template Preview")
-        return template_preview
+        return image_label, text_preview
 
     @staticmethod
     def create_all_tabs() -> tuple[QTabWidget, dict[str, Any]]:
@@ -130,6 +169,10 @@ class TabFactory:
         tabs["markdown_preview"] = TabFactory.create_markdown_tab(tab_widget)
         tabs["html_preview"] = TabFactory.create_html_tab(tab_widget)
         tabs["json_preview"] = TabFactory.create_json_tab(tab_widget)
-        tabs["template_preview"] = TabFactory.create_template_preview_tab(tab_widget)
+        template_image, template_text = TabFactory.create_template_preview_tab(
+            tab_widget
+        )
+        tabs["template_preview_image"] = template_image
+        tabs["template_preview_text"] = template_text
 
         return tab_widget, tabs

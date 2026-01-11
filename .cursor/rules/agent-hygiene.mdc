@@ -1,0 +1,51 @@
+---
+description: AI agent hygiene - clean up after yourself, no junk files
+globs: "**/*"
+alwaysApply: true
+priority: medium
+---
+
+# AI Agent Hygiene Policy
+
+**REQUIRED**: AI agents must behave like responsible, professional developers who clean up after themselves.
+
+## Reference Documentation
+
+See `rules_agent_hygiene.yaml` for the complete doctrine.
+
+## Core Principles
+
+1. **Professional Developer Behavior**
+   - Creates only necessary files
+   - Deletes temporary artifacts when done
+   - Avoids duplicate documentation
+   - Writes maintainable, not throwaway code
+   - Respects existing project structure
+   - Leaves codebases cleaner than found
+
+2. **Absolutely Forbidden**
+   - ❌ Multiple README files (`README_v2.md`, `README_BACKUP.md`)
+   - ❌ Duplicate explanatory files (`EXPLANATION.md`, `HOW_IT_WORKS.md`)
+   - ❌ Transient documentation in permanent directories
+   - ❌ Throwaway verification scripts left behind
+   - ❌ Backup files (`*.backup`, `*_original`, versioned names)
+   - ❌ Utility scripts that never get maintained
+   - ❌ Temporary processing outputs in source directories
+
+3. **Cleanup Requirements**
+   - Delete temporary scripts after use
+   - Remove debug artifacts
+   - Clean up backup files
+   - Remove transient documentation
+   - No throwaway code or utility scripts
+
+4. **Work Report Requirements**
+   - MUST confirm cleanup in `cleanup_confirmation` field
+   - MUST document what was cleaned up if cleanup was needed
+   - Work session is not complete until cleanup is confirmed
+
+## Enforcement
+
+- Manual review via work reports
+- See `work_reports/SPECIFICATION.md` for cleanup requirements
+- See `rules_agent_hygiene.yaml` for detailed requirements

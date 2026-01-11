@@ -1,0 +1,67 @@
+---
+description: Structured logging standards using structlog - events not messages
+globs: "**/*.py"
+alwaysApply: true
+priority: high
+---
+
+# Structured Logging Standards
+
+**CRITICAL**: PhilOcr uses structlog for structured, event-driven logging.
+
+## Reference Documentation
+
+See `rules_structured_logging.yaml` for the complete doctrine.
+
+## Core Principles
+
+1. **Events Not Messages**
+   - Log **events that happen** with structured context
+   - Event name is first positional argument
+   - Context as keyword arguments
+
+2. **Correct Pattern**
+   ```python
+   from philocr.utils.logging_config import get_logger
+   
+   logger = get_logger(__name__)
+   logger.info("pdf_processing_started", file_path=path, page_count=10)
+   logger.error("document_ai_request_failed", error=str(e), error_type=type(e).__name__, exc_info=True)
+   ```
+
+3. **Critical Anti-Patterns (CAUSES CRASHES)**
+   - ❌ `logger.info("event", event="something")` - Using `event` as keyword argument
+   - ❌ `logger.bind(event="something")` - Binding `event` keyword
+   - ❌ `logger.info("msg", extra={"event": "..."})` - `extra` dictionary wrapper
+   - ❌ `logger.bind(x=y)` without reassigning - Binding is immutable
+
+4. **Correct Patterns**
+   ```python
+   # ✅ CORRECT - Event-driven
+   logger.info("file_processing_started", file_path=path, file_type="pdf")
+   
+   # ✅ CORRECT - Binding with reassignment
+   logger = logger.bind(file_path=path)
+   logger.info("file_processed")
+   
+   # ✅ CORRECT - Error logging
+   logger.error(
+       "operation_failed",
+       error=str(e),
+       error_type=type(e).__name__,
+       exc_info=True,
+   )
+   ```
+
+5. **Enforcement**
+   - Automated by `guardian_063_structured_logging.py`
+   - Pre-commit hooks block violations
+
+## Migration Checklist
+
+- Replace `print()` with structured logging
+- Replace `logging.getLogger()` with `get_logger(__name__)`
+- Convert f-string messages to structured events
+- Remove any `extra` dictionary wrappers
+- Fix any 'event' keyword arguments
+- Ensure `logger.bind()` results are reassigned

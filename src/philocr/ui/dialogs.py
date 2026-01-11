@@ -224,7 +224,8 @@ class CredentialsDialog(QDialog):
             if reply != QMessageBox.StandardButton.Yes:
                 return
 
-        if self.form_handler.save_settings(settings):
+        try:
+            self.form_handler.save_settings(settings)
             self.form_handler.set_environment_variables(settings)
             _ = QMessageBox.information(
                 self,
@@ -233,9 +234,18 @@ class CredentialsDialog(QDialog):
                 "You may need to restart the application for changes to take full effect.",
             )
             self.accept()
-        else:
+        except Exception as e:
+            from philocr.utils.logging_config import get_logger
+
+            logger = get_logger(__name__)
+            logger.error(
+                "settings_save_dialog_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
             _ = QMessageBox.critical(
-                self, "Save Error", "Failed to save settings. Please try again."
+                self, "Save Error", f"Failed to save settings: {str(e)}"
             )
 
     def get_credentials(self) -> dict[str, str]:

@@ -134,15 +134,12 @@ def ocr_masked_page(
             error_type=type(e).__name__,
             exc_info=True,
         )
-        return OCRResult(
-            page_num=masked_page.page_num,
-            text="",
-            blocks=[],
-            paragraphs=[],
-            lines=[],
-            confidence=0.0,
-            error=str(e),
-        )
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(
+            f"CRITICAL: OCR processing failed for page {masked_page.page_num} - {e}"
+        ) from e
 
 
 def ocr_with_retry(
@@ -180,14 +177,31 @@ def ocr_with_retry(
             if result.error is None:
                 return result
 
-        except Exception as e:
+        except ConnectionError as e:
             logger.warning(
-                "ocr_retry_attempt_failed",
+                "ocr_retry_attempt_failed_transient",
                 page_num=masked_page.page_num,
                 attempt=attempt + 1,
                 max_retries=config.ocr_max_retries,
                 error=str(e),
+                error_type=type(e).__name__,
             )
+        except Exception as e:
+            logger.error(
+                "ocr_retry_attempt_failed_non_transient",
+                page_num=masked_page.page_num,
+                attempt=attempt + 1,
+                max_retries=config.ocr_max_retries,
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,
+            )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: OCR processing failed (non-transient error) for page {masked_page.page_num} - {e}"
+            ) from e
 
         # Exponential backoff
         if attempt < config.ocr_max_retries - 1:

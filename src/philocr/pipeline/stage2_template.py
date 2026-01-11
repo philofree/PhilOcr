@@ -61,13 +61,32 @@ class ZoneMeasurements:
             self.footnote_separators.append(zones.footnote_separator_y)
         self.has_footnotes.append(zones.footnote_separator_y is not None)
 
-        # Line number detection heuristic: if left margin > 8% of page width,
-        # likely has line numbers
-        margin_ratio = (
-            zones.left_margin_right / zones.page_width if zones.page_width > 0 else 0
-        )
-        self.has_line_numbers_left.append(margin_ratio > 0.08)
-        self.has_line_numbers_right.append(False)  # Less common
+        # Line number detection heuristic: if margin > 8% of page width,
+        # likely has line numbers on that side
+        if zones.page_width > 0:
+            left_margin_ratio = zones.left_margin_right / zones.page_width
+            right_margin_size = zones.page_width - zones.right_margin_left
+            right_margin_ratio = right_margin_size / zones.page_width
+
+            # Detect line numbers on left side (left margin > 8% of width)
+            has_left = left_margin_ratio > 0.08
+
+            # Detect line numbers on right side (right margin > 8% of width)
+            has_right = right_margin_ratio > 0.08
+
+            # Typically line numbers are on one side or the other, not both
+            # If both detected, prefer the side with larger margin
+            if has_left and has_right:
+                if left_margin_ratio > right_margin_ratio:
+                    has_right = False
+                else:
+                    has_left = False
+
+            self.has_line_numbers_left.append(has_left)
+            self.has_line_numbers_right.append(has_right)
+        else:
+            self.has_line_numbers_left.append(False)
+            self.has_line_numbers_right.append(False)
 
     def calculate_confidence(self) -> float:
         """Calculate template confidence based on measurement consistency.

@@ -1,0 +1,429 @@
+# PHILOCR FRONTEND-BACKEND BOUNDARY DOCTRINE
+# Strict Separation Between UI and Business Logic Layers
+#
+# Version: 1.0.0
+# Date: 2026-01-11
+#
+# Cross-references:
+#   - rules_ui_purity.yaml (UI layer architecture)
+#   - guardians/guardian_061_frontend_boundary_import.py (automated enforcement)
+
+################################################################################
+# METADATA & OVERVIEW
+################################################################################
+
+metadata:
+  title: "PhilOcr Frontend-Backend Boundary Doctrine - Strict Layer Separation"
+  version: "1.0.0"
+  created: "2026-01-11"
+  status: "AUTHORITATIVE"
+  scope: "ALL code in PhilOcr project"
+  enforcement: "MANDATORY - No exceptions"
+  project_context: |
+    PhilOcr: OCR processing application for ancient Greek texts
+    - PyQt6 desktop UI (frontend)
+    - Processing and workers layers (backend)
+    - Strict separation enables testability and headless operation
+
+################################################################################
+# CORE PRINCIPLE: STRICT LAYER SEPARATION
+################################################################################
+
+core_principle:
+  statement: "Frontend (UI) and backend (processing) layers must remain strictly separated. No cross-layer imports are allowed."
+
+  architecture_layers:
+    frontend_layer:
+      location: "src/philocr/ui/"
+      purpose: "User interface, user input handling, UI state management"
+      allowed_imports:
+        - "PyQt6 modules"
+        - "philocr.workers.* (workers are boundary components)"
+        - "philocr.utils.* (cross-cutting utilities)"
+        - "philocr.models.* (data models)"
+
+    backend_layer:
+      location: "src/philocr/processing/"
+      purpose: "Business logic, document processing, OCR operations"
+      forbidden_imports:
+        - "philocr.ui.* (backend must not know about UI)"
+
+    cross_cutting:
+      location: "src/philocr/utils/"
+      purpose: "Utilities used by both frontend and backend"
+      allowed_for: "Both frontend and backend"
+
+    boundary_components:
+      location: "src/philocr/workers/"
+      purpose: "Bridge between UI and processing - UI can import workers"
+      rationale: |
+        Workers are part of the boundary - they receive requests from UI
+        and coordinate with processing layer. UI importing workers is
+        acceptable as workers are the interface layer.
+
+  why_strict_separation:
+    - "Testability: Backend can be tested without UI dependencies"
+    - "Headless operation: Backend can run without UI (CLI, batch processing)"
+    - "Reusability: Backend logic can be used in different UI implementations"
+    - "Maintainability: Clear boundaries prevent circular dependencies"
+    - "Flexibility: UI can be swapped without changing backend"
+
+################################################################################
+# BANNED PATTERNS (ABSOLUTELY FORBIDDEN)
+################################################################################
+
+banned_patterns:
+
+  pattern_1_ui_importing_backend:
+    title: "UI Layer Importing Backend Processing Modules"
+    severity: "CRITICAL"
+    description: "UI files importing from processing layer directly"
+
+    wrong: |
+      # BANNED - UI importing backend processing
+      # File: src/philocr/ui/main_window.py
+      from philocr.processing.document_ai import process_document
+      
+      class MainWindow:
+          def process_file(self, file_path: str):
+              result = process_document(file_path)  # Direct backend call
+
+    correct: |
+      # CORRECT - UI imports worker (boundary component)
+      # File: src/philocr/ui/main_window.py
+      from philocr.workers.processing_worker import ProcessingWorker
+      
+      class MainWindow:
+          def __init__(self):
+              self.worker = ProcessingWorker()
+          
+          def process_file(self, file_path: str):
+              self.worker.process_file(file_path)
+
+    rationale: |
+      UI must not directly import processing modules. Workers serve as
+      the boundary layer that UI can interact with. Workers then coordinate
+      with the processing layer internally.
+
+  pattern_2_backend_importing_ui:
+    title: "Backend Layer Importing UI Modules"
+    severity: "CRITICAL"
+    description: "Backend files importing from UI layer"
+
+    wrong: |
+      # BANNED - Backend importing UI
+      # File: src/philocr/processing/document_ai.py
+      from philocr.ui.main_window import MainWindow
+      
+      def process_document(file_path: str):
+          window = MainWindow()  # Backend creating UI components
+          # ...
+
+    correct: |
+      # CORRECT - Backend is UI-agnostic
+      # File: src/philocr/processing/document_ai.py
+      def process_document(file_path: str) -> ProcessingResult:
+          # Process document without UI dependencies
+          # Return structured result
+          return ProcessingResult(...)
+
+    rationale: |
+      Backend must remain UI-agnostic to enable headless operation and
+      testability. Backend should return structured data, not interact
+      with UI components.
+
+################################################################################
+# ALLOWED PATTERNS
+################################################################################
+
+allowed_patterns:
+
+  pattern_1_ui_importing_workers:
+    title: "UI Importing Workers (Boundary Components)"
+    description: "Workers are boundary components - UI can import them"
+
+    correct: |
+      # ALLOWED - Workers are boundary layer
+      # File: src/philocr/ui/main_window.py
+      from philocr.workers.processing_worker import ProcessingWorker
+      
+      class MainWindow:
+          def __init__(self):
+              self.worker = ProcessingWorker()
+              self.worker.processing_complete.connect(self.on_complete)
+
+    rationale: |
+      Workers serve as the interface between UI and processing. They
+      receive requests from UI and coordinate with processing layer
+      internally. This is the intended architecture pattern.
+
+  pattern_2_cross_cutting_utils:
+    title: "Both Layers Using Utils"
+    description: "Utils are cross-cutting concerns - both layers can import them"
+
+    correct: |
+      # ALLOWED - Utils are cross-cutting
+      # File: src/philocr/ui/main_window.py
+      from philocr.utils.logging_config import get_logger
+      
+      # File: src/philocr/processing/document_ai.py
+      from philocr.utils.logging_config import get_logger
+
+    allowed_utils:
+      - "philocr.utils.logging_config (structured logging)"
+      - "philocr.utils.exceptions (exception hierarchy)"
+      - "philocr.utils.config_* (configuration management)"
+      - "philocr.utils.file_io.* (file operations)"
+      - "Any utility that doesn't depend on UI or processing"
+
+  pattern_3_models_and_data:
+    title: "Shared Data Models"
+    description: "Data models can be imported by both layers"
+
+    correct: |
+      # ALLOWED - Models are shared data structures
+      # File: src/philocr/ui/main_window.py
+      from philocr.models.document import Document
+      
+      # File: src/philocr/processing/document_ai.py
+      from philocr.models.document import Document
+
+    rationale: |
+      Data models are pure data structures without business logic or UI
+      dependencies. They can be safely shared between layers.
+
+  pattern_4_main_entry_point:
+    title: "Main Entry Point Exception"
+    description: "main.py and __main__.py can import UI (they are entry points)"
+
+    correct: |
+      # ALLOWED - Entry point needs to create UI
+      # File: src/philocr/main.py
+      from philocr.ui.main_window import MainWindow
+      
+      def main():
+          app = QApplication()
+          window = MainWindow()
+          window.show()
+          app.exec()
+
+    rationale: |
+      Entry points (main.py, __main__.py) are the application bootstrap
+      code. They need to import UI to start the application. This is
+      the only exception to the rule.
+
+  pattern_5_test_files:
+    title: "Test Files Exception"
+    description: "Test files can import both UI and backend (for integration tests)"
+
+    correct: |
+      # ALLOWED - Tests need to test integration
+      # File: tests/test_ui_integration.py
+      from philocr.ui.main_window import MainWindow
+      from philocr.processing.document_ai import process_document
+
+    rationale: |
+      Integration tests need to test the interaction between layers.
+      This is acceptable as tests are not production code.
+
+################################################################################
+# NAMESPACE DEFINITIONS
+################################################################################
+
+namespace_definitions:
+
+  frontend_namespace:
+    path: "src/philocr/ui/"
+    package: "philocr.ui"
+    description: "UI layer - user interface components"
+    can_import:
+      - "philocr.workers.*"
+      - "philocr.utils.*"
+      - "philocr.models.*"
+      - "PyQt6.*"
+      - "Standard library"
+    cannot_import:
+      - "philocr.processing.*"
+
+  backend_namespace:
+    path: "src/philocr/processing/"
+    package: "philocr.processing"
+    description: "Backend layer - business logic and processing"
+    can_import:
+      - "philocr.utils.*"
+      - "philocr.models.*"
+      - "Standard library"
+      - "Third-party libraries (Google Document AI, etc.)"
+    cannot_import:
+      - "philocr.ui.*"
+
+  cross_cutting_namespace:
+    path: "src/philocr/utils/"
+    package: "philocr.utils"
+    description: "Cross-cutting utilities"
+    can_be_imported_by: "Both frontend and backend"
+    must_not_import:
+      - "philocr.ui.*"
+      - "philocr.processing.*"
+
+  boundary_namespace:
+    path: "src/philocr/workers/"
+    package: "philocr.workers"
+    description: "Boundary components - bridge between UI and processing"
+    can_be_imported_by: "UI layer"
+    can_import:
+      - "philocr.processing.*"
+      - "philocr.utils.*"
+      - "philocr.models.*"
+
+################################################################################
+# DECISION TREE: CAN I IMPORT THIS?
+################################################################################
+
+decision_tree: |
+  Am I in a UI file (src/philocr/ui/)?
+  ├─ YES → Continue to UI decision tree
+  └─ NO → Continue to backend decision tree
+
+  UI DECISION TREE:
+  ├─ Is it philocr.workers.*? → ✅ ALLOWED (boundary components)
+  ├─ Is it philocr.utils.*? → ✅ ALLOWED (cross-cutting)
+  ├─ Is it philocr.models.*? → ✅ ALLOWED (data models)
+  ├─ Is it philocr.processing.*? → ❌ FORBIDDEN (use workers instead)
+  └─ Is it philocr.ui.*? → ✅ ALLOWED (same layer)
+
+  BACKEND DECISION TREE:
+  ├─ Is it philocr.utils.*? → ✅ ALLOWED (cross-cutting)
+  ├─ Is it philocr.models.*? → ✅ ALLOWED (data models)
+  ├─ Is it philocr.processing.*? → ✅ ALLOWED (same layer)
+  ├─ Is it philocr.ui.*? → ❌ FORBIDDEN (backend must be UI-agnostic)
+  └─ Is it philocr.workers.*? → ✅ ALLOWED (same layer/boundary)
+
+  EXCEPTIONS:
+  ├─ Am I in main.py or __main__.py? → ✅ Can import UI (entry point)
+  └─ Am I in a test file? → ✅ Can import both (integration testing)
+
+################################################################################
+# COMMON MISTAKES
+################################################################################
+
+common_mistakes:
+
+  mistake_1_ui_direct_processing:
+    wrong: |
+      # UI file importing processing directly
+      from philocr.processing.document_ai import process_document
+      
+      def process_file(self, file_path: str):
+          result = process_document(file_path)
+
+    fix: |
+      # Use worker instead
+      from philocr.workers.processing_worker import ProcessingWorker
+      
+      def __init__(self):
+          self.worker = ProcessingWorker()
+      
+      def process_file(self, file_path: str):
+          self.worker.process_file(file_path)
+
+  mistake_2_backend_creating_ui:
+    wrong: |
+      # Backend importing UI
+      from philocr.ui.main_window import MainWindow
+      
+      def process_document(file_path: str):
+          window = MainWindow()  # Creating UI from backend
+
+    fix: |
+      # Backend returns data, UI creates components
+      def process_document(file_path: str) -> ProcessingResult:
+          # Process and return result
+          return ProcessingResult(...)
+
+  mistake_3_utils_importing_layers:
+    wrong: |
+      # Utils importing UI or processing
+      # File: philocr/utils/helper.py
+      from philocr.ui.main_window import MainWindow  # Wrong
+      from philocr.processing.document_ai import process_document  # Wrong
+
+    fix: |
+      # Utils should not import layers
+      # Utils should be pure functions or simple utilities
+      # If you need layer-specific functionality, it's not a utility
+
+################################################################################
+# GUARDIAN ENFORCEMENT
+################################################################################
+
+guardian_enforcement:
+  guardian_file: "guardians/guardian_061_frontend_boundary_import.py"
+  guardian_name: "FrontendBoundaryImportGuardian"
+  status: "IMPLEMENTED - Active enforcement"
+
+  detects:
+    - "UI files importing from backend namespaces (philocr.processing.*)"
+    - "Backend files importing from UI namespace (philocr.ui.*)"
+    - "Relative imports that violate boundaries"
+
+  exceptions:
+    - "main.py and __main__.py (entry points can import UI)"
+    - "Test files (integration tests need both layers)"
+
+  usage: |
+    Run the guardian to verify compliance:
+
+    python guardians/guardian_061_frontend_boundary_import.py
+
+    Expected output:
+    ✅ Backend / Frontend boundaries intact!
+
+################################################################################
+# CROSS-REFERENCES
+################################################################################
+
+cross_references:
+  ui_purity:
+    path: "rules_ui_purity.yaml"
+    relationship: "UI layer architecture - complements boundary enforcement"
+
+  exception_handling:
+    path: "rules_exception_handling.yaml"
+    relationship: "Exception handling patterns for error boundaries"
+
+  structured_logging:
+    path: "rules_structured_logging.yaml"
+    relationship: "Logging patterns for cross-layer communication"
+
+################################################################################
+# SUMMARY
+################################################################################
+
+summary: |
+  PhilOcr enforces strict separation between frontend (UI) and backend (processing) layers:
+
+  1. **UI cannot import processing** - Use workers as boundary components
+  2. **Backend cannot import UI** - Backend must remain UI-agnostic
+  3. **Utils are cross-cutting** - Both layers can use utilities
+  4. **Workers are boundary** - UI can import workers (they bridge to processing)
+  5. **Models are shared** - Data models can be imported by both layers
+  6. **Entry points are exception** - main.py can import UI to bootstrap application
+
+  This architecture enables:
+  - Testable backend (without UI dependencies)
+  - Headless operation (backend can run standalone)
+  - Reusable processing logic (across different UI implementations)
+  - Clear boundaries (prevents circular dependencies)
+
+  Remember: If UI needs processing functionality, use a worker. If backend
+  needs UI functionality, refactor - backend should be UI-agnostic.
+
+canonical_notice: |
+  This is the canonical frontend-backend boundary guide for the PhilOcr codebase.
+
+  All code must follow these import boundary rules. UI and processing layers
+  must remain strictly separated, with workers serving as the boundary interface.
+
+  For UI layer architecture, see: rules_ui_purity.yaml
+  For exception handling at boundaries, see: rules_exception_handling.yaml

@@ -2,8 +2,6 @@ import datetime
 import json
 from typing import TYPE_CHECKING, Any
 
-from philocr.utils.document_ai_formatter import format_document_ai_json
-
 # Import the new markdown handler
 from philocr.utils.markdown_converter.markdown_handler import MarkdownHandler
 
@@ -48,7 +46,10 @@ class JSONHandler:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: JSON file save failed - {e}") from e
 
     @staticmethod
     def load_from_json(file_path: str) -> dict[str, Any] | None:
@@ -77,7 +78,10 @@ class JSONHandler:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return None
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: JSON file load failed - {e}") from e
 
     @staticmethod
     def text_to_json(
@@ -122,16 +126,15 @@ class JSONHandler:
                 return html_result
             except Exception as e:
                 logger.error(
-                    "html_conversion_markdown_handler_failed",
+                    "html_conversion_failed",
                     error=str(e),
                     error_type=type(e).__name__,
                     exc_info=True,
-                    using_fallback=True,
                 )
-                fallback_result: str = format_document_ai_json(
-                    json_data, debug_mode=False
-                )
-                return fallback_result
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(f"CRITICAL: HTML conversion failed - {e}") from e
         else:
             return "<html><body><p>No data available</p></body></html>"
 
@@ -182,7 +185,10 @@ class JSONHandler:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: HTML file save failed - {e}") from e
 
     @staticmethod
     def save_as_markdown(json_data: dict[str, Any], file_path: str) -> bool:
@@ -214,4 +220,7 @@ class JSONHandler:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Markdown file save failed - {e}") from e

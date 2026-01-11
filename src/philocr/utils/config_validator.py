@@ -76,11 +76,10 @@ def validate_configuration() -> ConfigValidationResult:
             error_type=type(e).__name__,
             exc_info=True,
         )
-        return ConfigValidationResult(
-            is_valid=False,
-            missing_fields=[],
-            error_message=f"Configuration validation error: {e}",
-        )
+        from philocr.utils.logging_config import flush_loggers
+
+        flush_loggers()
+        raise RuntimeError(f"CRITICAL: Configuration validation failed - {e}") from e
 
 
 def validate_credentials(credentials: dict[str, str | None]) -> ConfigValidationResult:

@@ -28,14 +28,14 @@ class ConfigPathResolver:
             return Path.home() / ".config" / "philocr"
 
     @staticmethod
-    def ensure_config_dir(config_dir: Path) -> bool:
+    def ensure_config_dir(config_dir: Path) -> None:
         """Ensure the configuration directory exists.
 
         Args:
             config_dir: Path to configuration directory
 
-        Returns:
-            True if directory exists or was created successfully, False otherwise
+        Raises:
+            RuntimeError: If directory creation fails
         """
         from philocr.utils.logging_config import get_logger
 
@@ -54,7 +54,12 @@ class ConfigPathResolver:
                 error=str(e),
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Config directory creation permission denied - {e}"
+            ) from e
         except Exception as e:
             logger.error(
                 "config_dir_create_failed",
@@ -62,4 +67,9 @@ class ConfigPathResolver:
                 error=str(e),
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Config directory creation failed - {e}"
+            ) from e

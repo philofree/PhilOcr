@@ -37,11 +37,16 @@ class AlternativeMetadataExtractor:
                 markdown_parts.append(f"# Document Processing Mode: {mode}")
                 markdown_parts.append("")
         except (KeyError, TypeError) as e:
-            logger.warning(
+            logger.error(
                 "metadata_extraction_failed",
                 error=str(e),
                 error_type=type(e).__name__,
+                exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Metadata extraction failed - {e}") from e
 
     @staticmethod
     def add_file_metadata(
@@ -67,14 +72,19 @@ class AlternativeMetadataExtractor:
                 markdown_parts.append(f"## File {file_idx + 1}")
                 markdown_parts.append("")
         except (KeyError, TypeError) as e:
-            logger.warning(
+            logger.error(
                 "file_metadata_extraction_failed",
                 file_idx=file_idx,
                 error=str(e),
                 error_type=type(e).__name__,
+                exc_info=True,
             )
-            markdown_parts.append(f"## File {file_idx + 1}")
-            markdown_parts.append("")
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: File metadata extraction failed for file {file_idx + 1} - {e}"
+            ) from e
 
     @staticmethod
     def extract_page_content(
@@ -113,8 +123,13 @@ class AlternativeMetadataExtractor:
                         page_content_map[page_num] = "\n\n".join(page_texts)
 
         except (KeyError, TypeError, AttributeError) as e:
-            logger.warning(
+            logger.error(
                 "page_content_extraction_failed",
                 error=str(e),
                 error_type=type(e).__name__,
+                exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Page content extraction failed - {e}") from e

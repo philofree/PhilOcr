@@ -122,19 +122,18 @@ class CredentialsFormHandler:
 
         return True, ""
 
-    def save_settings(self, settings: dict[str, str]) -> bool:
+    def save_settings(self, settings: dict[str, str]) -> None:
         """Save settings to persistent storage.
 
         Args:
             settings: Settings dictionary to save
 
-        Returns:
-            True if save was successful
+        Raises:
+            RuntimeError: If save operation fails
         """
         try:
             self.settings_manager.save_settings(settings)
             logger.info("credentials_settings_saved")
-            return True
         except Exception as e:
             logger.error(
                 "credentials_save_failed",
@@ -142,7 +141,10 @@ class CredentialsFormHandler:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Credentials save failed - {e}") from e
 
     def set_environment_variables(self, settings: dict[str, str]) -> None:
         """Set environment variables from settings.

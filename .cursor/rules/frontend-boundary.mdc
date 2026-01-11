@@ -1,0 +1,54 @@
+---
+description: Strict separation between UI and business logic layers
+globs: "**/*.py"
+alwaysApply: true
+priority: high
+---
+
+# Frontend-Backend Boundary - Strict Layer Separation
+
+**REQUIRED**: Frontend (UI) and backend (processing) layers must remain strictly separated. No cross-layer imports are allowed.
+
+## Reference Documentation
+
+See `rules_frontend_boundary.yaml` for the complete doctrine.
+
+## Core Principles
+
+1. **Strict Layer Separation**
+   - Frontend: `src/philocr/ui/` - User interface, input handling, UI state
+   - Backend: `src/philocr/processing/` - Business logic, document processing, OCR
+   - Cross-cutting: `src/philocr/utils/` - Utilities used by both layers
+   - Boundary: `src/philocr/workers/` - Bridge between UI and processing
+
+2. **Import Rules**
+   ```python
+   # ✅ CORRECT - UI can import workers (boundary components)
+   from philocr.workers.processing_worker import ProcessingWorker
+   
+   # ✅ CORRECT - UI can import utils (cross-cutting)
+   from philocr.utils.config_manager import get_config
+   
+   # ❌ FORBIDDEN - Backend importing UI
+   from philocr.ui.main_window import MainWindow  # NO!
+   
+   # ❌ FORBIDDEN - UI importing processing directly
+   from philocr.processing.document_ai import process_document  # NO!
+   ```
+
+3. **Allowed Imports**
+   - **Frontend** can import: `philocr.workers.*`, `philocr.utils.*`, `philocr.models.*`
+   - **Backend** can import: `philocr.utils.*`, `philocr.models.*`
+   - **Backend** must NOT import: `philocr.ui.*`
+
+4. **Enforcement**
+   - Automated by `guardian_061_frontend_boundary_import.py`
+   - Pre-commit hooks block violations
+
+## Rationale
+
+Strict separation enables:
+- Testability: Backend can be tested without UI dependencies
+- Headless operation: Backend can run without UI (CLI, batch processing)
+- Reusability: Backend logic can be used in different UI implementations
+- Maintainability: Clear boundaries prevent circular dependencies

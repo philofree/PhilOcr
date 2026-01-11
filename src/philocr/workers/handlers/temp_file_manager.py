@@ -42,9 +42,20 @@ class TempFileManager:
                 os.unlink(chunk_path)
                 logger.debug("temp_file_deleted", file_path=chunk_path)
             except Exception as e:
-                logger.debug(
+                # Even cleanup failures should be logged and fail fast per zero tolerance
+                from philocr.utils.logging_config import get_logger
+
+                log = get_logger(__name__)
+                log.error(
                     "temp_file_delete_failed",
                     file_path=chunk_path,
                     error=str(e),
                     error_type=type(e).__name__,
+                    exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Temp file cleanup failed for {chunk_path} - {e}"
+                ) from e

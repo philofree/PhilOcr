@@ -1,0 +1,58 @@
+---
+description: Zero tolerance for dodgy fallbacks and hardcoded defaults
+globs: "**/*.py"
+alwaysApply: true
+priority: critical
+---
+
+# Dodgy Fallback - Zero Tolerance Policy
+
+**CRITICAL**: PhilOcr enforces a **ZERO TOLERANCE** policy for dodgy fallbacks, silent fallbacks, and hardcoded defaults.
+
+## Reference Documentation
+
+See `rules_dodgy_fallback.yaml` for the complete doctrine.
+
+## Core Principles
+
+1. **Infrastructure Must Fail Loudly**
+   - Infrastructure failures MUST fail immediately with clear errors
+   - NO automatic creation of default instances
+   - NO lazy initialization without validation
+   - NO graceful degradation of infrastructure
+
+2. **Absolutely Forbidden Patterns**
+   ```python
+   # ❌ FORBIDDEN - Dodgy fallback
+   client = existing_client or Client()
+   
+   # ❌ FORBIDDEN - Ternary fallback
+   manager = config.get('manager') if config else DefaultManager()
+   
+   # ❌ FORBIDDEN - Dictionary get with object creation
+   handler = handlers.get('type', DefaultHandler())
+   
+   # ❌ FORBIDDEN - getattr with object creation
+   service = getattr(obj, 'service', Service())
+   ```
+
+3. **Required Pattern**
+   ```python
+   # ✅ CORRECT - Fail fast
+   if not client:
+       raise RuntimeError("CRITICAL: Client not configured")
+   
+   # ✅ CORRECT - Explicit validation
+   manager = config.get('manager')
+   if not manager:
+       raise ConfigurationError("Manager configuration required")
+   ```
+
+4. **Enforcement**
+   - Automated by `guardian_044_dodgy_fallback.py`
+   - Pre-commit hooks block violations
+   - **NO EXCEPTIONS** to this policy
+
+## Rationale
+
+Silent fallbacks hide configuration errors and system problems. When infrastructure is missing or misconfigured, the system MUST fail immediately with a clear error message.

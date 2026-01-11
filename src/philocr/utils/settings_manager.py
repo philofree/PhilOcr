@@ -44,12 +44,12 @@ class SettingsManager:
 
         return config_dir
 
-    def _ensure_config_dir(self) -> bool:
+    def _ensure_config_dir(self) -> None:
         """
         Ensure the configuration directory exists.
 
-        Returns:
-            bool: True if directory exists or was created successfully, False otherwise
+        Raises:
+            RuntimeError: If directory creation fails
         """
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -64,7 +64,12 @@ class SettingsManager:
                 error=str(e),
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Settings config directory creation permission denied - {e}"
+            ) from e
         except Exception as e:
             logger.error(
                 "config_dir_create_failed",
@@ -73,7 +78,12 @@ class SettingsManager:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Settings config directory creation failed - {e}"
+            ) from e
 
     def load_settings(self) -> dict[str, str | None]:
         """
@@ -95,6 +105,12 @@ class SettingsManager:
                     error=str(e),
                     exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Settings file is malformed JSON - {e}"
+                ) from e
             except PermissionError as e:
                 logger.error(
                     "settings_load_permission_denied",
@@ -102,6 +118,12 @@ class SettingsManager:
                     error=str(e),
                     exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Settings file permission denied - {e}"
+                ) from e
             except Exception as e:
                 logger.error(
                     "settings_load_failed",
@@ -110,28 +132,42 @@ class SettingsManager:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(f"CRITICAL: Settings load failed - {e}") from e
         else:
             logger.info("settings_file_not_found", using_defaults=True)
         return settings
 
-    def save_settings(self, settings: dict[str, str]) -> bool:
+    def save_settings(self, settings: dict[str, str]) -> None:
         """
         Save settings to the configuration file.
 
         Args:
             settings: Dictionary of settings to save
 
-        Returns:
-            bool: True if successful, False otherwise
+        Raises:
+            RuntimeError: If save operation fails
         """
         try:
             # Ensure config directory exists
-            if not self._ensure_config_dir():
+            try:
+                self._ensure_config_dir()
+            except Exception as e:
                 logger.error(
                     "settings_save_config_dir_failed",
                     config_dir=str(self.config_dir),
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    exc_info=True,
                 )
-                return False
+                from philocr.utils.logging_config import flush_loggers
+
+                flush_loggers()
+                raise RuntimeError(
+                    f"CRITICAL: Settings config directory creation failed during save - {e}"
+                ) from e
 
             # Set restrictive file permissions
             with open(self.config_file, "w", encoding="utf-8") as f:
@@ -142,7 +178,6 @@ class SettingsManager:
                 os.chmod(self.config_file, 0o600)
 
             logger.info("settings_saved", config_file=str(self.config_file))
-            return True
         except PermissionError as e:
             logger.error(
                 "settings_save_permission_denied",
@@ -150,7 +185,12 @@ class SettingsManager:
                 error=str(e),
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Settings save permission denied - {e}"
+            ) from e
         except OSError as e:
             logger.error(
                 "settings_save_os_error",
@@ -159,7 +199,10 @@ class SettingsManager:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Settings save OS error - {e}") from e
         except Exception as e:
             logger.error(
                 "settings_save_failed",
@@ -168,7 +211,10 @@ class SettingsManager:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            return False
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Settings save failed - {e}") from e
 
     def get_setting(self, key: str, default: str | None = None) -> str | None:
         """
@@ -184,7 +230,7 @@ class SettingsManager:
         settings = self.load_settings()
         return settings.get(key, default)
 
-    def set_setting(self, key: str, value: str) -> bool:
+    def set_setting(self, key: str, value: str) -> None:
         """
         Set a specific setting value.
 
@@ -192,8 +238,8 @@ class SettingsManager:
             key: Setting key
             value: Setting value
 
-        Returns:
-            bool: True if successful, False otherwise
+        Raises:
+            RuntimeError: If save operation fails
         """
         settings = self.load_settings()
         settings[key] = value
@@ -201,7 +247,7 @@ class SettingsManager:
         filtered_settings: dict[str, str] = {
             k: v for k, v in settings.items() if v is not None
         }
-        return self.save_settings(filtered_settings)
+        self.save_settings(filtered_settings)
 
 
 # Global settings manager instance

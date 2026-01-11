@@ -1,0 +1,53 @@
+---
+description: Zero mocking policy - use real components in verification
+globs: "tests/**/*.py"
+alwaysApply: true
+priority: critical
+---
+
+# Verification & Testing - Zero Mocking Policy
+
+**CRITICAL**: PhilOcr uses VERIFS (verification), not tests. Zero mocking policy - use real components.
+
+## Reference Documentation
+
+See `rules_verification_snagging_shakedown.yaml` for the complete doctrine.
+
+## Core Principles
+
+1. **Verifs Are Experiments, Not Logical Proofs**
+   - Hypothesis: "System should work"
+   - Experiment: Run REAL system with REAL data
+   - Observation: Capture empirical evidence
+   - Conclusion: Does evidence prove it works?
+
+2. **Zero Mocking Policy**
+   - ❌ NO `Mock`, `MagicMock`, `AsyncMock`
+   - ❌ NO `@patch`, `patch()`, `mock.patch`
+   - ❌ NO mocking of Google Document AI API
+   - ❌ NO mocking of filesystem operations
+   - ❌ NO mocking of network calls
+   - ❌ NO mocking of PyQt6 UI components
+
+3. **File Naming**
+   - Use `verif_*.py` naming (NOT `test_*.py`)
+   - Both can coexist during transition
+   - New verification should follow `verif_*.py` naming
+
+4. **Real Components Only**
+   - Google Document AI API (real API calls)
+   - PyQt6 UI (real UI components)
+   - Filesystem (real file operations)
+   - Network (real network calls)
+   - PDF processing (real PDF files)
+
+5. **Enforcement**
+   - Automated by `guardian_066_test_isolation.py`
+   - Pre-commit hooks block violations
+   - **NO EXCEPTIONS** to zero mocking policy
+
+## Rationale
+
+You CANNOT verify X by mocking X. Mocking = circular proof: "My mock returns what I told it → proves nothing"
+
+For OCR processing: verification requires REAL API calls with REAL documents to verify the system actually extracts Greek text correctly.

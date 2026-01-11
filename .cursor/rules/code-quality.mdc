@@ -1,0 +1,59 @@
+---
+description: Code quality standards - complexity, god classes, docstrings
+globs: "**/*.py"
+alwaysApply: true
+priority: medium
+---
+
+# Code Quality Standards
+
+**REQUIRED**: Maintain code quality through complexity limits, class size limits, and documentation.
+
+## Reference Documentation
+
+See `RULES_OVERVIEW.md` for complete guardian documentation.
+
+## Code Complexity
+
+1. **Function Limits**
+   - Max 50 lines per function
+   - Max 4 levels of nesting
+   - Max 5 parameters per function
+
+2. **Module Limits**
+   - Max 500 lines per module
+
+3. **Enforcement**
+   - Automated by `guardian_023_code_complexity.py`
+
+## God Class Detection
+
+1. **Class Limits**
+   - Max 300 lines per class
+   - Max 10 methods per class
+   - Min 0.8 cohesion score
+
+2. **Enforcement**
+   - Automated by `guardian_028_god_class.py`
+
+## Documentation
+
+1. **Docstring Requirements**
+   - All public functions MUST have docstrings
+   - All public classes MUST have docstrings
+   - All public methods MUST have docstrings
+
+2. **Enforcement**
+   - Automated by `guardian_065_docstring_completeness.py`
+
+## Security
+
+1. **Secrets Detection**
+   - NO hardcoded API keys
+   - NO hardcoded passwords
+   - NO hardcoded tokens
+   - NO hardcoded credentials
+
+2. **Enforcement**
+   - Automated by `guardian_064_secrets_leak.py`
+   - **CRITICAL** severity violations

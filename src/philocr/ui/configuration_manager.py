@@ -71,7 +71,13 @@ class ConfigurationManager:
                 error_type=type(e).__name__,
                 exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
             self.on_config_error(f"Unexpected configuration error: {e}")
+            raise RuntimeError(
+                f"CRITICAL: Configuration check failed - {e}"
+            ) from e
 
     def show_warning(self) -> None:
         """Show a warning if the application is not properly configured."""

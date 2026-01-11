@@ -244,7 +244,7 @@ def _setup_qt_plugins() -> None:
         from philocr.utils.logging_config import flush_loggers
 
         flush_loggers()
-        logger.warning("qt_plugins_setup_continuing_despite_error")
+        raise RuntimeError(f"CRITICAL: Qt plugins setup failed - {e}") from e
 
 
 if __name__ == "__main__":

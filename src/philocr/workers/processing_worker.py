@@ -139,9 +139,13 @@ class ProcessingWorker(QThread):
                 error_type=type(e).__name__,
                 exc_info=True,
             )
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
             worker_error = WorkerError(f"Unexpected error during processing: {e}")
             self.error_signal.emit(str(worker_error))
             self.finished_signal.emit(False)
+            raise worker_error
 
     def _process_single_delegated(self, rate_limiter: Any) -> None:
         """Process a single PDF file by delegating to handlers.
@@ -352,11 +356,12 @@ class ProcessingWorker(QThread):
                         error=str(e),
                         exc_info=True,
                     )
-                    all_text += (
-                        f"\n\n--- Document {i+1}: {file_name} "
-                        f"(ERROR: {str(e)}) ---\n\n"
-                    )
-                    self.update_signal.emit(all_text)
+                    from philocr.utils.logging_config import flush_loggers
+
+                    flush_loggers()
+                    raise WorkerError(
+                        f"CRITICAL: Batch pipeline file processing failed for {file_name} - {e}"
+                    ) from e
 
             # Finalize batch results using result processor
             self.result_text = all_text
@@ -495,7 +500,7 @@ class ProcessingWorker(QThread):
                     )
                     all_text += error_text
                 except Exception as e:
-                    # Catch unexpected errors - log and handle gracefully
+                    # Fail fast per zero tolerance policy
                     logger.error(
                         "batch_file_unexpected_error",
                         file_index=i + 1,
@@ -505,21 +510,12 @@ class ProcessingWorker(QThread):
                         error_type=type(e).__name__,
                         exc_info=True,
                     )
-                    worker_error = WorkerError(
-                        f"Unexpected error processing {file_name}: {e}"
-                    )
-                    error_text, processed_chunks = self.batch_handler.handle_file_error(
-                        i,
-                        file_name,
-                        page_count,
-                        max_pages,
-                        worker_error,
-                        processed_chunks,
-                        total_chunks,
-                        self.progress_signal.emit,
-                    )
-                    all_text += error_text
-                    self.update_signal.emit(all_text)
+                    from philocr.utils.logging_config import flush_loggers
+
+                    flush_loggers()
+                    raise WorkerError(
+                        f"CRITICAL: Unexpected error processing {file_name} - {e}"
+                    ) from e
 
             # Finalize batch results
             self.result_text = all_text

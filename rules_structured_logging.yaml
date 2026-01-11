@@ -582,7 +582,8 @@ migration:
 
 guardian_enforcement:
   guardian_file: "guardians/guardian_063_structured_logging.py"
-  status: "PLANNED - To be implemented for PhilOcr"
+  guardian_name: "StructuredLoggingGuardian"
+  status: "IMPLEMENTED - Active enforcement"
 
   detects:
     - "Bare `print()` calls in production code"

@@ -10,7 +10,6 @@ Before using, install with: pip install ijson
 
 import importlib.util
 import os
-import traceback
 from collections.abc import Generator
 from typing import Any
 
@@ -413,16 +412,17 @@ class StreamingAcademicDocumentParser:
                 logger.info("streaming_pages_completed", total_pages=page_count)
 
         except Exception as e:
-            error_details = traceback.format_exc()
             logger.error(
                 "streaming_pages_error",
                 json_file_path=self.json_file_path,
                 error=str(e),
                 error_type=type(e).__name__,
-                traceback=error_details,
                 exc_info=True,
             )
-            yield {"lines": [], "error": str(e)}
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(f"CRITICAL: Streaming pages failed - {e}") from e
 
     def calculate_page_dimensions(self, page: dict[str, Any]) -> dict[str, Any]:
         """
@@ -557,16 +557,19 @@ class StreamingAcademicDocumentParser:
 
             return result
         except Exception as e:
-            error_details = traceback.format_exc()
             logger.error(
                 "to_markdown_streaming_error",
                 json_file_path=self.json_file_path,
                 error=str(e),
                 error_type=type(e).__name__,
-                traceback=error_details,
                 exc_info=True,
             )
-            return f"Error generating markdown: {str(e)}"
+            from philocr.utils.logging_config import flush_loggers
+
+            flush_loggers()
+            raise RuntimeError(
+                f"CRITICAL: Streaming markdown conversion failed - {e}"
+            ) from e
 
 
 def convert_large_json(

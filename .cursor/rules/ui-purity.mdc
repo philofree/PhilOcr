@@ -1,0 +1,66 @@
+---
+description: UI layer must remain a thin delegation wrapper
+globs: "src/philocr/ui/**/*.py"
+alwaysApply: true
+priority: high
+---
+
+# UI Purity - Thin Wrapper Architecture
+
+**REQUIRED**: The UI layer must remain a thin delegation wrapper. Complex logic belongs in workers/utils.
+
+## Reference Documentation
+
+See `rules_ui_purity.yaml` for the complete doctrine.
+
+## Core Principles
+
+1. **UI as Thin Delegation Wrapper**
+   - UI receives user input
+   - UI delegates to workers/utils
+   - UI updates UI state based on results
+   - UI handles user-facing error messages
+
+2. **Architecture Model**
+   ```
+   UI Layer (src/philocr/ui/)
+   ├── Receives user input
+   ├── Delegates to workers/utils
+   ├── Updates UI state
+   └── Handles user-facing errors
+   
+   Workers Layer (src/philocr/workers/)
+   ├── Contains business logic
+   ├── Processes documents
+   ├── Handles async operations
+   └── Returns structured results
+   
+   Utils Layer (src/philocr/utils/)
+   ├── Cross-cutting utilities
+   ├── File I/O operations
+   ├── Configuration management
+   └── Reusable helpers
+   ```
+
+3. **Forbidden in UI Methods**
+   - ❌ Complex business logic
+   - ❌ File I/O operations
+   - ❌ Data transformations
+   - ❌ Complex algorithms
+   - ❌ Direct processing operations
+
+4. **Correct Pattern**
+   ```python
+   # ✅ CORRECT - UI delegates to worker
+   def on_file_selected(self, file_path: str):
+       self.worker_manager.process_file(file_path)
+   
+   # ✅ CORRECT - UI updates state from worker result
+   def on_processing_complete(self, result: dict):
+       self.update_text(result['text'])
+       self.update_status("Processing complete")
+   ```
+
+5. **Enforcement**
+   - Automated by `guardian_030_ui_purity.py`
+   - Pre-commit hooks block violations

@@ -1,0 +1,60 @@
+---
+description: Zero tolerance policy for silent failures, graceful degradation, and error swallowing
+globs: "**/*.py"
+alwaysApply: true
+priority: critical
+---
+
+# Exception Handling - Zero Tolerance Policy
+
+**CRITICAL**: PhilOcr enforces a **ZERO TOLERANCE** policy for silent failures, graceful degradation, and error swallowing.
+
+## Reference Documentation
+
+See `rules_exception_handling.yaml` for the complete doctrine.
+
+## Core Principles
+
+1. **Fail Fast, Fail Loud, Log Everything**
+   - All failures MUST fail loudly, visibly, and immediately
+   - NO silent failures (errors caught and ignored)
+   - NO graceful degradation (continuing with degraded functionality)
+   - NO swallowed exceptions (caught but not logged or re-raised)
+
+2. **Required Exception Handling Pattern**
+   ```python
+   try:
+       # operation
+   except SpecificException as e:
+       logger.error(
+           "operation_failed",
+           error=str(e),
+           error_type=type(e).__name__,
+           exc_info=True,
+       )
+       from philocr.utils.logging_config import flush_loggers
+       flush_loggers()
+       raise RuntimeError(f"CRITICAL: Operation failed - {e}") from e
+   ```
+
+3. **Absolutely Forbidden Patterns**
+   - ❌ `except Exception as e: logger.error(...); return False`
+   - ❌ `except Exception as e: logger.error(...); return None`
+   - ❌ `except Exception as e: logger.error(...); pass`
+   - ❌ `except Exception as e: logger.error(...); continue`
+   - ❌ `except Exception: pass` (bare except, no logging)
+
+4. **Enforcement**
+   - Automated by `guardian_010_catch_all_exceptions.py`
+   - Automated by `guardian_067_silent_failures.py`
+   - Pre-commit hooks block violations
+   - **NO EXCEPTIONS** to this policy
+
+## UI/Worker Boundaries
+
+UI and worker code may show error dialogs or emit error signals, but must still:
+- Log errors with `exc_info=True`
+- Call `flush_loggers()` before user feedback
+- Document in guardian exception list if not re-raising
+
+See `guardian_010_catch_all_exceptions_exceptions.json` for documented exceptions.

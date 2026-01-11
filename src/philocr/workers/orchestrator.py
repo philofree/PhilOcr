@@ -49,15 +49,22 @@ class ProcessingOrchestrator:
         self.on_progress_update = on_progress_update
         self.on_text_update = on_text_update
 
+        # Create temp file manager explicitly (fail loudly if creation fails)
+        from philocr.workers.handlers.temp_file_manager import TempFileManager
+
+        temp_file_manager = TempFileManager()
+
         # Initialize handlers
         self.single_handler = SingleFileHandler(
             on_status_update=on_status_update,
             on_progress_update=on_progress_update,
             on_text_update=on_text_update,
+            temp_file_manager=temp_file_manager,
         )
         self.batch_handler = BatchFileHandler(
             on_status_update=on_status_update,
             on_progress_update=on_progress_update,
+            temp_file_manager=temp_file_manager,
         )
         self.result_processor = ResultProcessor()
 
