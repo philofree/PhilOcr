@@ -70,16 +70,15 @@ class AlternativeFormatConverter:
                 return HybridFormatProcessor.process(
                     json_data, markdown_parts, page_content_map
                 )
-            elif "files" in json_data and isinstance(json_data["files"], list):
+            if "files" in json_data and isinstance(json_data["files"], list):
                 return FilesArrayProcessor.process(
                     json_data, markdown_parts, is_chunked_format, page_content_map
                 )
-            elif "text" in json_data:
+            if "text" in json_data:
                 return ChunkedTextProcessor.process_chunked(
                     json_data, markdown_parts, is_chunked_format
                 )
-            else:
-                raise AlternativeFormatError("Unknown alternative format structure")
+            raise AlternativeFormatError("Unknown alternative format structure")
 
         except (KeyError, ValueError, re.error) as e:
             logger.error(

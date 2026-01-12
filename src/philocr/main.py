@@ -114,12 +114,12 @@ def _create_splash_screen(_app: QApplication) -> QSplashScreen:
         splash_layout = QVBoxLayout(splash_widget)
 
         splash_title = QLabel(f"{APP_NAME}")
-        splash_title.setFont(QFont("Arial", 20, QFont.Weight.Bold))
+        splash_title.setFont(QFont("Gentium", 20, QFont.Weight.Bold))
         splash_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         splash_layout.addWidget(splash_title)
 
         splash_version = QLabel(f"v{APP_VERSION}")
-        splash_version.setFont(QFont("Arial", 14))
+        splash_version.setFont(QFont("Gentium", 14))
         splash_version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         splash_layout.addWidget(splash_version)
 
@@ -150,6 +150,11 @@ def _initialize_application() -> QApplication:
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("Philofree")
     app.setOrganizationDomain("philofree.com")
+
+    # Set global font to Gentium with fallback
+    default_font = QFont("Gentium", 12)
+    default_font.setFamilies(["Gentium", "Arial", "sans-serif"])
+    app.setFont(default_font)
 
     _ = load_application_icon(app)
 

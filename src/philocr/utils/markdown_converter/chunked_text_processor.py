@@ -59,19 +59,18 @@ class ChunkedTextProcessor:
                 return ChunkPageProcessor.process_documents_with_chunks(
                     text, doc_matches, markdown_parts
                 )
-            else:
-                # No document markers, look for chunks directly
-                chunk_matches = list(
-                    re.finditer(ChunkPageProcessor.CHUNK_PATTERN, text)
-                )
+            # No document markers, look for chunks directly
+            chunk_matches = list(
+                re.finditer(ChunkPageProcessor.CHUNK_PATTERN, text)
+            )
 
-                if chunk_matches:
-                    empty_page_map: dict[int, str] = {}
-                    ChunkPageProcessor.process_chunks(
-                        text, markdown_parts, empty_page_map, chunk_matches
-                    )
-                else:
-                    return ChunkedTextProcessor.process_simple(text, markdown_parts)
+            if chunk_matches:
+                empty_page_map: dict[int, str] = {}
+                ChunkPageProcessor.process_chunks(
+                    text, markdown_parts, empty_page_map, chunk_matches
+                )
+            else:
+                return ChunkedTextProcessor.process_simple(text, markdown_parts)
 
             markdown = "\n".join(markdown_parts)
             logger.info(

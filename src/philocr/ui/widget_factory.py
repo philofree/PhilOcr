@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTextEdit,
     QVBoxLayout,
+    QWidget,
 )
 
 
@@ -49,7 +50,7 @@ class WidgetFactory:
             font.setPointSize(font_size)
             text_edit.setFont(font)
         else:
-            text_edit.setFont(QFont("Courier New", font_size))
+            text_edit.setFont(QFont("Gentium", font_size))
 
         palette = QPalette()
         palette.setColor(QPalette.ColorRole.Base, Qt.GlobalColor.white)
@@ -127,31 +128,67 @@ class WidgetFactory:
             Configured header frame
         """
         header_frame = QFrame()
-        header_frame.setFrameShape(QFrame.Shape.StyledPanel)
         header_frame.setStyleSheet("background-color: #f0f0f0;")
-        header_layout = QHBoxLayout(header_frame)
+        header_layout = QVBoxLayout(header_frame)
+        header_layout.setContentsMargins(5, 2, 5, 15)
+        header_layout.setSpacing(10)
 
+        # Title and version row - centered
+        title_row = QHBoxLayout()
+        title_row.addStretch()
+        
         app_title = QLabel(f"{app_name}")
-        app_title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        header_layout.addWidget(app_title)
+        title_font = QFont("Gentium", 34, QFont.Weight.Bold)
+        title_font.setItalic(True)
+        app_title.setFont(title_font)
+        app_title.setStyleSheet("color: #1e3a6e;")
+        title_row.addWidget(app_title)
 
-        version_label = QLabel(f"v{app_version}")
-        version_label.setFont(QFont("Arial", 10))
-        header_layout.addWidget(version_label)
+        version_label = QLabel("v3.0")
+        version_label.setFont(QFont("Gentium", 22))
+        title_font.setItalic(True)
+        version_label.setStyleSheet("color: #1e3a6e;")
+        title_row.addWidget(version_label)
+        
+        title_row.addStretch()
+        header_layout.addLayout(title_row)
 
-        header_layout.addStretch()
+        # Buttons - side-by-side with centering
+        button_container = QWidget()
+        button_container_layout = QHBoxLayout(button_container)
+        button_container_layout.setContentsMargins(0, 0, 0, 0)
+        button_container_layout.setSpacing(5)
 
+        button_font = QFont("Gentium", 14)
+        
         settings_button = WidgetFactory.create_button(
             "Settings",
             on_settings_clicked,
             tooltip="Configure Google Cloud credentials",
+            min_height=36,
+            max_width=200,
         )
-        header_layout.addWidget(settings_button)
+        settings_button.setFont(button_font)
+        button_container_layout.addWidget(settings_button)
 
         about_button = WidgetFactory.create_button(
-            "About", on_about_clicked, tooltip="Show information about this application"
+            "About",
+            on_about_clicked,
+            tooltip="Show information about this application",
+            min_height=36,
+            max_width=200,
         )
-        header_layout.addWidget(about_button)
+        about_button.setFont(button_font)
+        button_container_layout.addWidget(about_button)
+
+        # Center the buttons horizontally
+        centering_wrapper = QWidget()
+        centering_layout = QHBoxLayout(centering_wrapper)
+        centering_layout.setContentsMargins(0, 0, 0, 0)
+        centering_layout.addStretch()
+        centering_layout.addWidget(button_container)
+        centering_layout.addStretch()
+        header_layout.addWidget(centering_wrapper)
 
         return header_frame
 
@@ -167,10 +204,11 @@ class WidgetFactory:
         status_layout = QHBoxLayout(status_frame)
 
         status_label = QLabel("Status:")
-        status_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        status_label.setFont(QFont("Gentium", 14, QFont.Weight.Bold))
 
-        status_text = QLabel("Ready to process documents")
-        status_text.setFont(QFont("Arial", 14))
+        status_text = QLabel("PhilOcr v3.0")
+        status_text.setFont(QFont("Gentium", 14))
+        status_text.setStyleSheet("color: #1e3a6e;")
 
         status_layout.addWidget(status_label)
         status_layout.addWidget(status_text, 1)

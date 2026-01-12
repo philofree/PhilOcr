@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""Dialog components for the advanced pipeline configuration.
+"""Dialog components for the application.
 
-This module exports dialog classes for configuring pipeline parameters.
-The main AboutDialog and CredentialsDialog are in dialogs.py at the parent level.
+This module exports dialog classes for settings and about dialogs.
 """
 from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-
-from philocr.ui.dialogs.pipeline_config_dialog import PipelineConfigDialog
 
 # Import AboutDialog and CredentialsDialog from parent dialogs.py module
 _parent_dir = Path(__file__).parent.parent
@@ -25,4 +22,4 @@ if _spec and _spec.loader:
 else:
     raise ImportError("Failed to load dialogs.py module")
 
-__all__ = ["AboutDialog", "CredentialsDialog", "PipelineConfigDialog"]
+__all__ = ["AboutDialog", "CredentialsDialog"]

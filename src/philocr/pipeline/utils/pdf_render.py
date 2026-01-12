@@ -49,7 +49,6 @@ def convert_to_grayscale(image: np.ndarray) -> np.ndarray:
     """
     if len(image.shape) == 2:
         return image  # Already grayscale
-    elif image.shape[2] == 4:
+    if image.shape[2] == 4:
         return cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
-    else:
-        return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)

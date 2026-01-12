@@ -102,26 +102,25 @@ class ConfigIO:
                             "YAML module not available despite YAML_AVAILABLE being True"
                         )
                     return _yaml_module.safe_load(f) or {}
-                else:
-                    import json
+                import json
 
-                    try:
-                        return json.load(f)
-                    except json.JSONDecodeError as json_err:
-                        logger.error(
-                            "config_file_json_parse_error",
-                            config_file=str(config_file),
-                            error=str(json_err),
-                            error_type="JSONDecodeError",
-                            line=json_err.lineno,
-                            column=json_err.colno,
-                            exc_info=True,
-                        )
-                        flush_loggers()
-                        raise ValueError(
-                            f"Invalid JSON in configuration file at line {json_err.lineno}, "
-                            f"column {json_err.colno}: {json_err.msg}"
-                        ) from json_err
+                try:
+                    return json.load(f)
+                except json.JSONDecodeError as json_err:
+                    logger.error(
+                        "config_file_json_parse_error",
+                        config_file=str(config_file),
+                        error=str(json_err),
+                        error_type="JSONDecodeError",
+                        line=json_err.lineno,
+                        column=json_err.colno,
+                        exc_info=True,
+                    )
+                    flush_loggers()
+                    raise ValueError(
+                        f"Invalid JSON in configuration file at line {json_err.lineno}, "
+                        f"column {json_err.colno}: {json_err.msg}"
+                    ) from json_err
         except ValueError:
             # Re-raise ValueError (including JSONDecodeError wrapped as ValueError)
             raise

@@ -260,14 +260,13 @@ class FileOperations:
                     method="regular_conversion",
                 )
                 return True
-            else:
-                logger.error("regular_conversion_failed_or_errors")
-                from philocr.utils.logging_config import flush_loggers
+            logger.error("regular_conversion_failed_or_errors")
+            from philocr.utils.logging_config import flush_loggers
 
-                flush_loggers()
-                raise RuntimeError(
-                    f"CRITICAL: Regular conversion failed - markdown content is invalid or empty"
-                )
+            flush_loggers()
+            raise RuntimeError(
+                "CRITICAL: Regular conversion failed - markdown content is invalid or empty"
+            )
 
         except json.JSONDecodeError as e:
             logger.error(
@@ -339,5 +338,4 @@ class FileOperations:
         """
         if file_size_mb <= FileOperations.LARGE_FILE_THRESHOLD_MB:
             return "regular"
-        else:
-            return "large_file"
+        return "large_file"

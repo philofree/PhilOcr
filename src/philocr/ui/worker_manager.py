@@ -9,9 +9,16 @@ import datetime
 from typing import TYPE_CHECKING, Any
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QProgressBar
 
-from philocr.ui.worker_callbacks import WorkerCallbacks
+if TYPE_CHECKING:
+    from PyQt6.QtWidgets import QProgressBar
+
+    from philocr.ui.worker_callbacks import WorkerCallbacks
+else:
+    from PyQt6.QtWidgets import QProgressBar
+
+    from philocr.ui.worker_callbacks import WorkerCallbacks
+
 from philocr.workers.processing_worker import ProcessingWorker
 
 if TYPE_CHECKING:
@@ -49,13 +56,17 @@ class WorkerManager:
         self.worker: ProcessingWorker | None = None
 
     def start_single_file_processing(
-        self, file_path: str, processing_mode: str = "standard"
+        self,
+        file_path: str,
+        processing_mode: str = "standard",
+        manual_scan_areas: Any | None = None,  # ManualScanAreas
     ) -> None:
         """Start processing a single file.
 
         Args:
             file_path: Path to the PDF file to process
             processing_mode: Processing mode ("standard" or "advanced_pipeline")
+            manual_scan_areas: Optional manual scan areas for pages
         """
         # Clear previews and set processing state
         self.callbacks.on_preview_clear()
@@ -78,7 +89,11 @@ class WorkerManager:
 
         # Create and configure worker
         self.worker = ProcessingWorker(
-            file_path, None, self.temp_cleaner, processing_mode=processing_mode
+            file_path,
+            None,
+            self.temp_cleaner,
+            processing_mode=processing_mode,
+            manual_scan_areas=manual_scan_areas,
         )
 
         # Connect standard signals
@@ -207,7 +222,7 @@ class WorkerManager:
         success: bool,
         has_text: bool,
         has_json: bool,
-        current_json: dict[str, Any] | None,
+        current_json: dict[str, Any] | None,  # noqa: ARG002
     ) -> None:
         """Handle processing completion.
 

@@ -187,8 +187,7 @@ class ChunkProcessor:
         if file_size_bytes > 100 * 1024 * 1024:
             return 5
         # For large files (>50MB), use medium chunks
-        elif file_size_bytes > 50 * 1024 * 1024:
+        if file_size_bytes > 50 * 1024 * 1024:
             return 7
         # Default chunk size
-        else:
-            return ChunkProcessor.DEFAULT_CHUNK_SIZE
+        return ChunkProcessor.DEFAULT_CHUNK_SIZE

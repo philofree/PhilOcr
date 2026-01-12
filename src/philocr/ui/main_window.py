@@ -5,14 +5,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStatusBar
+
+if TYPE_CHECKING:
+    from PyQt6.QtGui import QCloseEvent  # noqa: TCH002
 
 from philocr.ui.dialog_manager import DialogManager
 from philocr.ui.lifecycle_manager import LifecycleManager
 from philocr.ui.main_window_coordinator import MainWindowCoordinator
 from philocr.ui.main_window_factory import MainWindowManagerFactory
 from philocr.ui.main_window_state_manager import MainWindowStateManager
+from philocr.ui.scan_area_manager import ScanAreaManager
+from philocr.ui.template_preview_handler import TemplatePreviewHandler
 from philocr.ui.ui_builder import UICallbacks
 from philocr.ui.ui_composer import MainWindowUIComposer
 from philocr.utils.markdown_debug_service import MarkdownDebugService
@@ -53,7 +57,7 @@ class MainWindow(QMainWindow):
         self.app_copyright = app_copyright
         self.app_description = app_description
 
-        self.setWindowTitle(f"{app_name} v{app_version}")
+        self.setWindowTitle(f"{app_name} v3.0")
         self.resize(1000, 800)
 
         # Initialize the temp file cleaner
@@ -66,6 +70,8 @@ class MainWindow(QMainWindow):
 
         # Initialize state
         self.current_result_json: dict[str, Any] | None = None
+        self.current_pdf_path: str | None = None
+        self.current_scan_areas: Any | None = None  # ManualScanAreas
 
         # Compose UI
         callbacks = UICallbacks(
@@ -80,7 +86,8 @@ class MainWindow(QMainWindow):
             on_save_html=self.save_html,
             on_clear=self.clear_results,
             on_debug_markdown=self.debug_markdown,
-            on_pipeline_config=self.show_pipeline_config_dialog,
+            on_save_scan_areas=self.save_scan_areas,
+            on_process_scan_areas=self.process_scan_areas,
         )
         composer = MainWindowUIComposer(
             app_name=self.app_name,
@@ -107,6 +114,7 @@ class MainWindow(QMainWindow):
             status_bar=self.status_bar,
             progress_bar=self.ui.progress_bar,
             buttons=buttons,
+            stage_progress_widget=self.ui.stage_progress,
         )
         self.state_manager = MainWindowStateManager(
             buttons=buttons,
@@ -138,6 +146,31 @@ class MainWindow(QMainWindow):
             on_status_update=self.update_status,
             on_save_buttons_enable=(self.state_manager.enable_save_buttons),
         )
+
+        # Initialize template preview handler
+        # Note: template_preview_text and template_preview_image don't exist in UI
+        # (dead code path), but handler structure is kept for future use
+        self.template_preview_handler = TemplatePreviewHandler(
+            template_preview_text=getattr(self.ui, "template_preview_text", None),
+            template_preview_image=getattr(self.ui, "template_preview_image", None),
+            parent_widget=self,
+            on_status_update=self.update_status,
+            on_error=self.show_error,
+        )
+
+        # Initialize scan area manager
+        self.scan_area_manager = ScanAreaManager(
+            scan_area_tab=self.ui.scan_area_tab,
+            tab_widget=self.ui.tab_widget,
+            worker_manager=None,  # Set after worker_manager is created
+            on_status_update=self.update_status,
+            on_error=self.show_error,
+            on_scan_areas_changed=lambda scan_areas: setattr(
+                self, "current_scan_areas", scan_areas
+            ),
+            get_processing_mode=self._get_processing_mode,
+            get_current_pdf_path=lambda: self.current_pdf_path,
+        )
         self.worker_manager = factory.create_worker_manager(
             temp_cleaner=self.temp_cleaner,
             progress_bar=self.ui.progress_bar,
@@ -149,10 +182,12 @@ class MainWindow(QMainWindow):
             on_json_ready=self.json_data_ready,
             on_button_state_change=self.state_manager.set_button_states,
             on_preview_clear=self.state_manager.clear_previews,
-            on_stage_progress=self._handle_stage_progress,
-            on_overall_progress=self._handle_overall_progress,
-            on_template_ready=self._handle_template_ready,
+            on_stage_progress=self.coordinator.handle_stage_progress,
+            on_overall_progress=self.coordinator.handle_overall_progress,
+            on_template_ready=self.template_preview_handler.handle_template_ready,
         )
+        # Set worker_manager in scan_area_manager after creation
+        self.scan_area_manager.worker_manager = self.worker_manager
         self.config_manager = factory.create_configuration_manager(
             parent_widget=self,
             on_config_error=self.show_error,
@@ -172,7 +207,7 @@ class MainWindow(QMainWindow):
         )
 
         # Set initial status message
-        self.coordinator.update_status(f"{self.app_name} v{app_version}")
+        self.coordinator.update_status(f"{self.app_name} v3.0")
 
         # Check configuration after a short delay
         _ = QTimer.singleShot(500, self.config_manager.check)
@@ -209,18 +244,20 @@ class MainWindow(QMainWindow):
         """Show the about dialog."""
         self.dialog_manager.show_about()
 
-    def show_pipeline_config_dialog(self) -> None:
-        """Show the pipeline configuration dialog."""
-        self.dialog_manager.show_pipeline_config()
-
     def select_file(self) -> None:
         """Handle file selection for a single PDF."""
         file_path = self.file_operations_manager.select_single_file()
         if file_path:
-            processing_mode = self._get_processing_mode()
-            self.worker_manager.start_single_file_processing(
-                file_path, processing_mode=processing_mode
-            )
+            self.current_pdf_path = file_path
+            self.scan_area_manager.show_scan_area_viewer(file_path)
+
+    def save_scan_areas(self) -> None:
+        """Handle save scan areas button click."""
+        self.scan_area_manager.save_scan_areas()
+
+    def process_scan_areas(self) -> None:
+        """Handle process scan areas button click."""
+        self.scan_area_manager.process_scan_areas()
 
     def select_multiple_files(self) -> None:
         """Handle selection of multiple PDF files for batch processing."""
@@ -308,259 +345,7 @@ class MainWindow(QMainWindow):
         """
         self.lifecycle_manager.on_window_close(event)
 
-    def _handle_stage_progress(
-        self, stage_name: str, progress: int, status_text: str
-    ) -> None:
-        """Handle stage-specific progress updates.
 
-        Args:
-            stage_name: Stage name
-            progress: Progress percentage (0-100)
-            status_text: Status message
-        """
-        if hasattr(self.ui, "stage_progress"):
-            self.ui.stage_progress.update_stage(stage_name, progress, status_text)
-
-    def _handle_overall_progress(self, progress: int) -> None:
-        """Handle overall progress updates.
-
-        Args:
-            progress: Overall progress percentage (0-100)
-        """
-        if hasattr(self.ui, "stage_progress"):
-            self.ui.stage_progress.update_overall(progress)
-        # Also update standard progress bar for compatibility
-        if hasattr(self.ui, "progress_bar"):
-            self.ui.progress_bar.setValue(progress)
-
-    def _handle_template_ready(self, template_dict: dict[str, Any]) -> None:
-        """Handle template ready signal.
-
-        Args:
-            template_dict: Template metadata dictionary
-        """
-        # Update template text preview
-        if (
-            hasattr(self.ui, "template_preview_text")
-            and self.ui.template_preview_text
-        ):
-            template_text = self._format_template_preview(template_dict)
-            self.ui.template_preview_text.setPlainText(template_text)
-
-        # Update template image preview
-        if (
-            hasattr(self.ui, "template_preview_image")
-            and self.ui.template_preview_image
-        ):
-            visualization_path = template_dict.get("visualization_path")
-            if visualization_path:
-                from pathlib import Path
-
-                from PyQt6.QtCore import Qt
-                from PyQt6.QtGui import QPixmap
-
-                vis_path = Path(visualization_path)
-                if vis_path.exists():
-                    try:
-                        pixmap = QPixmap(str(vis_path))
-                        if not pixmap.isNull():
-                            # Scale to fit while maintaining aspect ratio
-                            scaled_pixmap = pixmap.scaled(
-                                800,
-                                1200,
-                                Qt.AspectRatioMode.KeepAspectRatio,
-                                Qt.TransformationMode.SmoothTransformation,
-                            )
-                            self.ui.template_preview_image.setPixmap(scaled_pixmap)
-                            self.ui.template_preview_image.setText("")
-                            # Store the original path for saving/opening
-                            self.ui.template_preview_image.visualization_path = (
-                                str(vis_path)
-                            )
-                            # Set up context menu
-                            self.ui.template_preview_image.customContextMenuRequested.connect(
-                                lambda pos: self._show_template_image_menu(
-                                    pos, self.ui.template_preview_image
-                                )
-                            )
-                        else:
-                            logger.warning(
-                                "template_visualization_load_failed",
-                                path=str(vis_path),
-                            )
-                    except Exception as e:
-                        logger.warning(
-                            "template_visualization_display_failed",
-                            path=str(vis_path),
-                            error=str(e),
-                            error_type=type(e).__name__,
-                            exc_info=True,
-                        )
-
-    def _show_template_image_menu(self, pos: Any, image_label: Any) -> None:
-        """Show context menu for template image.
-
-        Args:
-            pos: Position where context menu was requested
-            image_label: The image label widget
-        """
-        from PyQt6.QtCore import QPoint
-        from PyQt6.QtGui import QCursor
-        from PyQt6.QtWidgets import QFileDialog, QMenu
-
-        if not hasattr(image_label, "visualization_path"):
-            return
-
-        menu = QMenu(self)
-        save_action = menu.addAction("Save Image As...")
-        open_action = menu.addAction("Open in Window")
-
-        action = menu.exec(image_label.mapToGlobal(pos))
-        if action == save_action:
-            self._save_template_image(image_label.visualization_path)
-        elif action == open_action:
-            self._open_template_image_window(image_label.visualization_path)
-
-    def _save_template_image(self, image_path: str) -> None:
-        """Save template visualization image to a user-selected location.
-
-        Args:
-            image_path: Path to the visualization image
-        """
-        from pathlib import Path
-
-        from PyQt6.QtWidgets import QFileDialog
-
-        default_filename = Path(image_path).name
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Template Visualization",
-            str(Path.home() / default_filename),
-            "PNG Images (*.png);;All Files (*)",
-        )
-
-        if file_path:
-            try:
-                from shutil import copyfile
-
-                copyfile(image_path, file_path)
-                self.update_status(f"Template image saved to {file_path}")
-                logger.info("template_image_saved", path=file_path)
-            except Exception as e:
-                logger.error(
-                    "template_image_save_failed",
-                    path=file_path,
-                    error=str(e),
-                    error_type=type(e).__name__,
-                    exc_info=True,
-                )
-                from philocr.utils.logging_config import flush_loggers
-
-                flush_loggers()
-                self.show_error(f"Failed to save image: {e}")
-
-    def _open_template_image_window(self, image_path: str) -> None:
-        """Open template visualization in a separate window.
-
-        Args:
-            image_path: Path to the visualization image
-        """
-        from pathlib import Path
-
-        from PyQt6.QtCore import Qt
-        from PyQt6.QtGui import QPixmap
-        from PyQt6.QtWidgets import QDialog, QLabel, QVBoxLayout
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Template Visualization")
-        dialog.setMinimumSize(800, 1000)
-
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        image_label = QLabel()
-        image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        image_label.setScaledContents(False)
-
-        try:
-            pixmap = QPixmap(image_path)
-            if not pixmap.isNull():
-                # Scale to fit dialog while maintaining aspect ratio
-                scaled_pixmap = pixmap.scaled(
-                    dialog.size().width() - 20,
-                    dialog.size().height() - 20,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                image_label.setPixmap(pixmap)  # Use original for better quality
-                image_label.setMinimumSize(600, 800)
-                layout.addWidget(image_label)
-
-                # Add right-click context menu to save
-                image_label.setContextMenuPolicy(
-                    Qt.ContextMenuPolicy.CustomContextMenu
-                )
-                image_label.customContextMenuRequested.connect(
-                    lambda pos: self._show_template_image_menu(pos, image_label)
-                )
-                image_label.visualization_path = image_path
-
-                dialog.exec()
-            else:
-                self.show_error("Failed to load template visualization image")
-        except Exception as e:
-            logger.error(
-                "template_image_window_open_failed",
-                path=image_path,
-                error=str(e),
-                error_type=type(e).__name__,
-                exc_info=True,
-            )
-            from philocr.utils.logging_config import flush_loggers
-
-            flush_loggers()
-            self.show_error(f"Failed to open image window: {e}")
-
-    def _format_template_preview(self, template_dict: dict[str, Any]) -> str:
-        """Format template information for preview display.
-
-        Args:
-            template_dict: Template metadata dictionary
-
-        Returns:
-            Formatted template preview text
-        """
-        lines = [
-            "Template Preview",
-            "=" * 50,
-            "",
-            f"Confidence: {template_dict.get('confidence', 0.0):.2f}",
-            f"Pages Analysed: {template_dict.get('pages_analysed', 0)}",
-            "",
-            "Body Region:",
-            f"  Left: {template_dict.get('body_left', 0)}",
-            f"  Right: {template_dict.get('body_right', 0)}",
-            f"  Top: {template_dict.get('body_top', 0)}",
-            f"  Bottom: {template_dict.get('body_bottom', 0)}",
-            "",
-            "Page Dimensions:",
-            f"  Width: {template_dict.get('page_width', 0)}",
-            f"  Height: {template_dict.get('page_height', 0)}",
-            "",
-            "Zone Boundaries:",
-            f"  Header Bottom: {template_dict.get('header_bottom', 0)}",
-            f"  Footer Top: {template_dict.get('footer_top', 0)}",
-            f"  Left Margin Right: {template_dict.get('left_margin_right', 0)}",
-            f"  Right Margin Left: {template_dict.get('right_margin_left', 0)}",
-            "",
-            "Features:",
-            f"  Line Numbers (Left): {template_dict.get('has_line_numbers_left', False)}",
-            f"  Line Numbers (Right): {template_dict.get('has_line_numbers_right', False)}",
-            f"  Footnotes: {template_dict.get('has_footnotes', False)}",
-            "",
-            "Note: Visual overlay can be generated using the template visualizer.",
-        ]
-        return "\n".join(lines)
 
     def debug_markdown(self) -> None:
         """Run a debug test of the markdown conversion directly from the UI."""
@@ -587,3 +372,4 @@ class MainWindow(QMainWindow):
             )
         elif result.error_message:
             self.show_error(result.error_message)
+

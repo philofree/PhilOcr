@@ -297,11 +297,10 @@ class MarkdownHandler:
                     method="chunked_processing",
                 )
                 return markdown
-            else:
-                logger.error("chunked_processing_no_output")
-                raise MarkdownConversionError(
-                    "Conversion failed - no valid markdown generated"
-                )
+            logger.error("chunked_processing_no_output")
+            raise MarkdownConversionError(
+                "Conversion failed - no valid markdown generated"
+            )
 
         except (ChunkProcessingError, MarkdownConversionError) as e:
             logger.error(

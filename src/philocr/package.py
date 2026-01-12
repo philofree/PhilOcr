@@ -208,7 +208,7 @@ def create_pyinstaller_spec() -> bool:
                     if icon_file == "app-icon-512.svg":
                         icon_path = os.path.join("philocr_icons", icon_file)
                         break
-                    elif not icon_path:
+                    if not icon_path:
                         icon_path = os.path.join("philocr_icons", icon_file)
 
     # Create the spec file content

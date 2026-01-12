@@ -466,5 +466,4 @@ def process_file_doc_data(
 
         # Join all parts with appropriate spacing and normalize
         return normalize_to_nfc("\n".join(all_text_parts))
-    else:
-        return "No text content found in document."
+    return "No text content found in document."

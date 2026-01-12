@@ -52,7 +52,7 @@ class AboutDialog(QDialog):
 
         # Application title and version
         title_label = QLabel(f"{app_name} v{app_version}")
-        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title_label.setFont(QFont("Gentium", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
 

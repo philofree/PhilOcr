@@ -6,9 +6,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from philocr.utils.exceptions import FileLoadError
+from philocr.utils.exceptions import FileLoadError, JSONValidationError
 from philocr.utils.exceptions import FileNotFoundError as PhilOcrFileNotFoundError
-from philocr.utils.exceptions import JSONValidationError
 from philocr.utils.logging_config import flush_loggers
 
 if TYPE_CHECKING:

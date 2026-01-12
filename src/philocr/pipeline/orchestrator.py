@@ -4,17 +4,24 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from philocr.models.config import PipelineConfig
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from philocr.models.config import PipelineConfig
+    from philocr.models.page import PageImage
+else:
+    from collections.abc import Callable
+
+    from philocr.models.config import PipelineConfig
+    from philocr.models.page import PageImage
+
 from philocr.models.document import Document, DocumentMetadata
-from philocr.models.page import PageImage
 from philocr.models.template import DocumentTemplate
 from philocr.pipeline.stage1_normalise import normalise_all_pages
-from philocr.pipeline.stage2_mask import apply_template_to_pages
-from philocr.pipeline.stage2_template import extract_template
+from philocr.pipeline.stage2_mask import apply_zones_to_pages
 from philocr.pipeline.stage3_ocr import ocr_all_pages
 from philocr.pipeline.stage4_assemble import assemble_document, assemble_page
 from philocr.processing.document_ai import RateLimiter
@@ -28,6 +35,45 @@ else:
     from philocr.utils.logging_config import get_logger
 
     logger = get_logger(__name__)
+
+
+def _get_default_template(sample_image: PageImage | None = None) -> DocumentTemplate:
+    """Create a default template for manual scan area mode.
+
+    Args:
+        sample_image: Optional sample image to get dimensions from
+
+    Returns:
+        DocumentTemplate with default values
+    """
+    # Use sample image dimensions if available, otherwise use typical 8.5x11 at 300 DPI
+    if sample_image:
+        page_width = sample_image.width
+        page_height = sample_image.height
+    else:
+        # Default: 8.5 x 11 inches at 300 DPI
+        page_width = 2550
+        page_height = 3300
+
+    # Full page bounds (manual scan areas handle the actual cropping)
+    return DocumentTemplate(
+        page_width=page_width,
+        page_height=page_height,
+        body_left=0,
+        body_right=page_width,
+        body_top=0,
+        body_bottom=page_height,
+        header_bottom=0,
+        footer_top=page_height,
+        left_margin_right=0,
+        right_margin_left=page_width,
+        footnote_separator_y=None,
+        pages_analysed=0,
+        confidence=1.0,  # Manual mode - user defined
+        has_line_numbers_left=False,
+        has_line_numbers_right=False,
+        has_footnotes=False,
+    )
 
 
 class PipelineOrchestrator:
@@ -51,8 +97,8 @@ class PipelineOrchestrator:
         """
         self.config = config
         self.output_base_dir = Path(output_base_dir)
-        self.on_progress = on_progress or (lambda *args: None)
-        self.on_status = on_status or (lambda *args: None)
+        self.on_progress = on_progress or (lambda *_args: None)
+        self.on_status = on_status or (lambda *_args: None)
         self.stage_times: dict[str, float] = {}
 
     def _emit_progress(self, stage_name: str, progress: int, status_text: str) -> None:
@@ -80,6 +126,7 @@ class PipelineOrchestrator:
         project_id: str | None = None,
         location: str | None = None,
         processor_id: str | None = None,
+        manual_scan_areas: Any | None = None,  # ManualScanAreas
     ) -> Document:
         """Process a document through all pipeline stages.
 
@@ -89,12 +136,13 @@ class PipelineOrchestrator:
             project_id: Optional Google Cloud project ID
             location: Optional Document AI location
             processor_id: Optional Document AI processor ID
+            manual_scan_areas: Manual scan areas defined by user (required)
 
         Returns:
             Complete Document object
 
         Raises:
-            Exception: If processing fails at any stage
+            RuntimeError: If manual_scan_areas is not provided
         """
         start_time = time.time()
 
@@ -107,28 +155,33 @@ class PipelineOrchestrator:
 
         # Create output directories
         stage1_dir = self.output_base_dir / "stage1_normalised"
-        stage2_dir = self.output_base_dir / "stage2_masked"
-        stage2_template_dir = self.output_base_dir / "stage2_template"
+        stage2_dir = self.output_base_dir / "stage2_cropped"
 
         # Stage 1: Image Normalisation
         self._emit_status("Stage 1: Normalising pages...")
         normalised_images = self._stage1_normalise(pdf_path, str(stage1_dir))
 
-        # Stage 2a+2b: Template Extraction
-        self._emit_status("Stage 2: Extracting template...")
-        template = self._stage2_extract_template(
-            normalised_images, str(stage2_template_dir)
-        )
+        # Create default template (manual scan areas handle actual cropping)
+        sample_image = normalised_images[0] if normalised_images else None
+        template = _get_default_template(sample_image)
 
-        # Stage 2c: Apply Masking
-        self._emit_status("Stage 2: Applying template mask...")
-        masked_pages = self._stage2_apply_masking(
-            normalised_images, template, str(stage2_dir)
+        if manual_scan_areas:
+            logger.info(
+                "using_manual_scan_areas",
+                page_count=len(manual_scan_areas.areas),
+            )
+
+        # Stage 2: Apply Manual Scan Areas (crop to user-defined regions)
+        self._emit_status("Stage 2: Cropping to scan areas...")
+        cropped_pages = self._stage2_apply_cropping(
+            normalised_images, str(stage2_dir), manual_scan_areas
         )
 
         # Stage 3: OCR
         self._emit_status("Stage 3: Running OCR...")
-        ocr_results = self._stage3_ocr(masked_pages, project_id, location, processor_id)
+        ocr_results = self._stage3_ocr(
+            cropped_pages, project_id, location, processor_id
+        )
 
         # Stage 4: Assembly
         self._emit_status("Stage 4: Assembling text...")
@@ -140,7 +193,6 @@ class PipelineOrchestrator:
             pdf_path=pdf_path,
             total_time=total_time,
             total_pages=len(normalised_images),
-            template_confidence=template.confidence,
         )
 
         return document
@@ -173,115 +225,37 @@ class PipelineOrchestrator:
 
         return images
 
-    def _stage2_extract_template(
+    def _stage2_apply_cropping(
         self,
         normalised_images: list[PageImage],
         output_dir: str,
-    ) -> DocumentTemplate:
-        """Execute Stage 2a+2b: Template extraction.
-
-        Args:
-            normalised_images: List of normalised page images
-            output_dir: Output directory for template JSON
-
-        Returns:
-            DocumentTemplate object
-        """
-        from philocr.pipeline.stage2_template import (
-            apply_conservative_defaults,
-            get_default_template,
-        )
-
-        stage_start = time.time()
-
-        self._emit_progress("Stage 2", 0, "Detecting zones on sample pages...")
-
-        # Extract template with fallback for low confidence
-        try:
-            template = extract_template(normalised_images, self.config)
-
-            if template.confidence < self.config.min_template_confidence:
-                logger.warning(
-                    "template_low_confidence",
-                    confidence=template.confidence,
-                    threshold=self.config.min_template_confidence,
-                )
-                if normalised_images:
-                    template = apply_conservative_defaults(
-                        template, normalised_images[0]
-                    )
-                else:
-                    template = get_default_template()
-        except Exception as e:
-            logger.error(
-                "template_extraction_failed",
-                error=str(e),
-                error_type=type(e).__name__,
-                exc_info=True,
-            )
-            from philocr.utils.logging_config import flush_loggers
-
-            flush_loggers()
-            raise RuntimeError(f"CRITICAL: Template extraction failed - {e}") from e
-
-        # Save template
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
-        template_path = Path(output_dir) / "template.json"
-        template.to_json(str(template_path))
-
-        self._emit_progress(
-            "Stage 2",
-            100,
-            f"Template extracted (confidence: {template.confidence:.2f})",
-        )
-
-        stage_time = time.time() - stage_start
-        self.stage_times["stage2"] = stage_time
-
-        return template
-
-    def _stage2_apply_masking(
-        self,
-        normalised_images: list[PageImage],
-        template: DocumentTemplate,
-        output_dir: str,
+        manual_scan_areas: Any | None = None,  # ManualScanAreas
     ) -> list[Any]:  # list[MaskedPage] | list[CroppedPage]
-        """Execute Stage 2c: Apply template masking.
+        """Execute Stage 2: Apply manual scan areas (crop to user-defined regions).
 
         Args:
             normalised_images: List of normalised page images
-            template: Document template
-            output_dir: Output directory for masked images
+            output_dir: Output directory for cropped images
+            manual_scan_areas: Manual scan areas for pages
 
         Returns:
-            List of MaskedPage or CroppedPage objects
+            List of CroppedPage objects
         """
         stage_start = time.time()
         total_pages = len(normalised_images)
 
-        self._emit_progress(
-            "Stage 2", 0, f"Applying template mask to {total_pages} pages..."
+        self._emit_progress("Stage 2", 0, f"Cropping {total_pages} pages...")
+
+        cropped_pages = apply_zones_to_pages(
+            normalised_images, output_dir, self.config, manual_scan_areas
         )
 
-        masked_pages = apply_template_to_pages(
-            normalised_images, template, output_dir, self.config
-        )
-
-        # Update progress as we process (approximate)
-        for i in range(total_pages):
-            progress = int((i + 1) / total_pages * 100)
-            self._emit_progress(
-                "Stage 2",
-                progress,
-                f"Masked {i + 1}/{total_pages} pages",
-            )
-
-        self._emit_progress("Stage 2", 100, f"Masked {total_pages} pages")
+        self._emit_progress("Stage 2", 100, f"Cropped {total_pages} pages")
 
         stage_time = time.time() - stage_start
-        self.stage_times["stage2c"] = stage_time
+        self.stage_times["stage2"] = stage_time
 
-        return masked_pages
+        return cropped_pages
 
     def _stage3_ocr(
         self,
@@ -290,10 +264,10 @@ class PipelineOrchestrator:
         location: str | None = None,
         processor_id: str | None = None,
     ) -> list[Any]:  # list[OCRResult]
-        """Execute Stage 3: OCR on masked images.
+        """Execute Stage 3: OCR on cropped images.
 
         Args:
-            masked_pages: List of masked/cropped pages
+            masked_pages: List of cropped pages
             project_id: Optional Google Cloud project ID
             location: Optional Document AI location
             processor_id: Optional Document AI processor ID

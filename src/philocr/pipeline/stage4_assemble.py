@@ -380,10 +380,9 @@ def classify_indent_hint(
 
     if indent_ratio < 0.02:
         return 0  # Flush left
-    elif indent_ratio < 0.06:
+    if indent_ratio < 0.06:
         return 1  # Standard indent
-    else:
-        return 2  # Deep indent
+    return 2  # Deep indent
 
 
 def assemble_page(

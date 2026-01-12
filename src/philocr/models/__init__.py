@@ -13,6 +13,12 @@ from philocr.models.document import (
 )
 from philocr.models.ocr_result import OCRResult, TextBlock, TextLine, TextParagraph
 from philocr.models.page import CroppedPage, MaskedPage, PageImage, PageZones
+from philocr.models.scan_area import (
+    ManualScanArea,
+    ManualScanAreas,
+    load_scan_areas,
+    save_scan_areas,
+)
 from philocr.models.template import DocumentTemplate
 
 __all__ = [
@@ -34,4 +40,8 @@ __all__ = [
     "DocumentStatistics",
     "GenreHint",
     "GenreDetectionResult",
+    "ManualScanArea",
+    "ManualScanAreas",
+    "load_scan_areas",
+    "save_scan_areas",
 ]
