@@ -33,6 +33,7 @@ class MainWindowCoordinator:
         status_bar: Any,  # QStatusBar
         progress_bar: QProgressBar,
         buttons: dict[str, QPushButton],
+        stage_progress_widget: Any | None = None,  # StageProgressWidget
     ) -> None:
         """Initialize the coordinator.
 
@@ -41,11 +42,13 @@ class MainWindowCoordinator:
             status_bar: Status bar widget
             progress_bar: Progress bar widget
             buttons: Dictionary of button references
+            stage_progress_widget: Optional stage progress widget
         """
         self.status_label = status_label
         self.status_bar = status_bar
         self.progress_bar = progress_bar
         self.buttons = buttons
+        self.stage_progress_widget = stage_progress_widget
 
     def update_status(self, message: str) -> None:
         """Update the status message.
@@ -64,6 +67,31 @@ class MainWindowCoordinator:
             text: Text content to set
         """
         text_edit.setPlainText(text)
+
+    def handle_stage_progress(
+        self, stage_name: str, progress: int, status_text: str
+    ) -> None:
+        """Handle stage-specific progress updates.
+
+        Args:
+            stage_name: Stage name
+            progress: Progress percentage (0-100)
+            status_text: Status message
+        """
+        if hasattr(self, "stage_progress_widget") and self.stage_progress_widget:
+            self.stage_progress_widget.update_stage(stage_name, progress, status_text)
+
+    def handle_overall_progress(self, progress: int) -> None:
+        """Handle overall progress updates.
+
+        Args:
+            progress: Overall progress percentage (0-100)
+        """
+        if hasattr(self, "stage_progress_widget") and self.stage_progress_widget:
+            self.stage_progress_widget.update_overall(progress)
+        # Also update standard progress bar for compatibility
+        if self.progress_bar:
+            self.progress_bar.setValue(progress)
 
     def set_button_states(self, states: dict[str, bool]) -> None:
         """Update button enabled/disabled states.

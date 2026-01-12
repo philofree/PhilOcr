@@ -6,17 +6,22 @@ and layouts for the MainWindow.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+else:
+    from collections.abc import Callable
 from typing import Any, NamedTuple
 
 from PyQt6.QtWidgets import (
     QFrame,
-    QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
     QTabWidget,
+    QVBoxLayout,
 )
 
 from philocr.ui.tab_factory import TabFactory
@@ -59,7 +64,8 @@ class UICallbacks:
         on_save_html: Callback for save HTML button
         on_clear: Callback for clear button
         on_debug_markdown: Callback for debug markdown button
-        on_pipeline_config: Callback for pipeline configuration button
+        on_save_scan_areas: Callback for save scan areas button
+        on_process_scan_areas: Callback for process scan areas button
     """
 
     on_settings_clicked: Callable[[], None]
@@ -73,7 +79,8 @@ class UICallbacks:
     on_save_html: Callable[[], None]
     on_clear: Callable[[], None]
     on_debug_markdown: Callable[[], None]
-    on_pipeline_config: Callable[[], None]
+    on_save_scan_areas: Callable[[], None]
+    on_process_scan_areas: Callable[[], None]
 
 
 class UIBuilder:
@@ -105,7 +112,8 @@ class UIBuilder:
         self.on_save_html = callbacks.on_save_html
         self.on_clear = callbacks.on_clear
         self.on_debug_markdown = callbacks.on_debug_markdown
-        self.on_pipeline_config = callbacks.on_pipeline_config
+        self.on_save_scan_areas = callbacks.on_save_scan_areas
+        self.on_process_scan_areas = callbacks.on_process_scan_areas
 
     def create_header_section(self) -> QFrame:
         """Create the application header section.
@@ -139,39 +147,87 @@ class UIBuilder:
 
     def create_button_section(
         self,
-    ) -> tuple[QHBoxLayout, dict[str, QPushButton]]:
+    ) -> tuple[QVBoxLayout, dict[str, QPushButton]]:
         """Create the button section.
 
         Returns:
             Tuple of (button layout, dictionary of button widgets).
         """
         button_configs = [
-            ButtonConfig("select", "Select PDF", self.on_select_file),
-            ButtonConfig("batch", "Batch Process", self.on_batch_files),
-            ButtonConfig("load_json", "Load JSON", self.on_load_json),
-            ButtonConfig("save", "Save Text", self.on_save_text, False),
+            ButtonConfig("select", "Select PDF", self.on_select_file, max_width=200),
             ButtonConfig(
-                "save_markdown", "Save Markdown", self.on_save_markdown, False
+                "batch", "Batch Process", self.on_batch_files, max_width=200
             ),
-            ButtonConfig("save_json", "Save JSON", self.on_save_json, False),
-            ButtonConfig("save_html", "Save HTML", self.on_save_html, False),
-            ButtonConfig("clear", "Clear", self.on_clear),
+            ButtonConfig("load_json", "Load JSON", self.on_load_json, max_width=200),
+            ButtonConfig("save", "Save Text", self.on_save_text, False, max_width=200),
+            ButtonConfig(
+                "save_markdown",
+                "Save Markdown",
+                self.on_save_markdown,
+                False,
+                max_width=200,
+            ),
+            ButtonConfig("save_json", "Save JSON", self.on_save_json, False, max_width=200),
+            ButtonConfig("save_html", "Save HTML", self.on_save_html, False, max_width=200),
+            ButtonConfig("clear", "Clear", self.on_clear, max_width=200),
             ButtonConfig(
                 "debug_md",
                 "Debug MD",
                 self.on_debug_markdown,
                 tooltip="Run a debug test of the markdown conversion",
-                max_width=80,
+                max_width=200,
             ),
         ]
 
-        button_layout = QHBoxLayout()
+        button_layout = QVBoxLayout()
+        button_layout.setSpacing(5)
         buttons = {}
 
+        from PyQt6.QtGui import QFont
+
+        button_font = QFont("Gentium", 14)
         for config in button_configs:
             button = self._create_button(config)
+            button.setFont(button_font)
+            button.setMinimumHeight(36)
             button_layout.addWidget(button)
             buttons[config.key] = button
+
+        # Add spacing before scan area buttons
+        button_layout.addSpacing(10)
+
+        # Add Save Scan Areas button (full width, blue tint)
+        save_scan_area_button = WidgetFactory.create_button(
+            "Save Scan Areas",
+            self.on_save_scan_areas,
+            max_width=200,
+            min_height=36,
+        )
+        save_scan_area_button.setFont(button_font)
+        save_scan_area_button.setStyleSheet(
+            "QPushButton { background-color: #E6F0FF; }"
+            "QPushButton:hover { background-color: #CCE0FF; }"
+        )
+        button_layout.addWidget(save_scan_area_button)
+        buttons["save_scan_areas"] = save_scan_area_button
+
+        # Add spacing between scan area buttons
+        button_layout.addSpacing(5)
+
+        # Add Send Scan Areas button (full width, green tint)
+        process_scan_area_button = WidgetFactory.create_button(
+            "Send Scan Areas",
+            self.on_process_scan_areas,
+            max_width=200,
+            min_height=36,
+        )
+        process_scan_area_button.setFont(button_font)
+        process_scan_area_button.setStyleSheet(
+            "QPushButton { background-color: #E6FFE6; }"
+            "QPushButton:hover { background-color: #CCFFCC; }"
+        )
+        button_layout.addWidget(process_scan_area_button)
+        buttons["process_scan_areas"] = process_scan_area_button
 
         return button_layout, buttons
 

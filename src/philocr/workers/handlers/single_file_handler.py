@@ -17,7 +17,6 @@ from philocr.utils.exceptions import (
 )
 from philocr.utils.logging_config import flush_loggers
 from philocr.workers.handlers.split_document_processor import SplitDocumentProcessor
-from philocr.workers.handlers.temp_file_manager import TempFileManager
 
 if TYPE_CHECKING:
     import structlog

@@ -14,6 +14,7 @@ The tool handles scanned PDFs of ancient Greek literature and converts them to s
 - **Polytonic Greek support** — full Unicode coverage for ancient Greek diacritics
 - **Multiple output formats** — Text, Markdown, HTML, JSON (ready for Philofree pipeline integration)
 - **Document structure identification** — automatically identifies line numbers, footnotes, headers, indentation levels, and references
+- **Manual scan area selection** — precise 4-corner polygon selection for cropping text areas, with mask/whiteout for excluding unwanted content
 - **Memory-efficient processing** — handles large critical editions efficiently
 - **Batch processing** — process entire library collections systematically
 
@@ -87,6 +88,48 @@ The OCR output feeds directly into our text processing pipeline, where it receiv
 ```bash
 python -m src.philocr.main
 ```
+
+### Manual Scan Area Selection
+
+The application provides a "Scan Area Selection" tab for precise control over which parts of each page to process:
+
+#### Setting Up Scan Areas
+
+1. **Select a PDF** and navigate to the "Scan Area Selection" tab
+2. **Adjust the green rectangle** for each page:
+   - **Drag corners** to position precisely (respects exact quadrilateral, not just bounding box)
+   - **Drag edges** to resize
+   - **Drag in the middle** to move the entire selection area
+   - **Mouse wheel** to zoom in/out (50%-300%) for precise positioning
+
+3. **Copy to multiple pages** (for consistent layouts):
+   - **"Copy to Next →"** — applies current scan area to the next page
+   - **"Copy to All Following →"** — applies to all remaining pages
+
+#### Using Mask/Whiteout Feature
+
+For excluding unwanted content (folio marks, page numbers, marginalia) that falls within your scan area:
+
+1. **Enable Mask Mode**: Check the "Mask Mode (Draw Whiteout)" checkbox for the page
+2. **Draw masks**: Click and drag to draw rectangles over content to exclude
+   - Red dashed border shows the mask as you draw
+   - Completed masks appear as semi-transparent white rectangles with red borders
+3. **Delete individual masks**: Double-click on any mask to remove it
+4. **Clear all masks**: Click "Clear Masks" button to start over
+
+#### How Polygon Cropping Works
+
+Unlike simple rectangular cropping, PhilOcr respects your exact 4-corner selection:
+- Creates a precise polygon mask from your corners
+- Whites out everything outside the polygon (even if it's in the bounding box)
+- Essential for skewed pages where rectangular cropping would include margins
+- Your pixel-perfect corner placement is preserved
+
+#### Saving and Processing
+
+1. **Save Scan Areas**: Click "Save Scan Areas" button (saves to `.scan_areas.json` alongside your PDF)
+2. **Process**: Click "Process Scan Areas" to run OCR with your selections
+3. Scan areas and masks are automatically loaded next time you open the same PDF
 
 ### Processing a Single File
 

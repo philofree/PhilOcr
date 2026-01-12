@@ -105,9 +105,8 @@ class ConfigManager:
                 return self.config_file_json
             # Default to YAML for new configs
             return self.config_file_yaml
-        else:
-            # Use JSON if YAML not available
-            return self.config_file_json
+        # Use JSON if YAML not available
+        return self.config_file_json
 
     def load_config(self) -> dict[str, Any]:
         """Load configuration from the config file.

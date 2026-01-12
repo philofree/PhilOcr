@@ -15,7 +15,6 @@ from philocr.utils.exceptions import PDFProcessingError
 from philocr.utils.logging_config import flush_loggers
 from philocr.workers.handlers.chunk_processor import ChunkProcessor
 from philocr.workers.handlers.layout_combiner import LayoutCombiner
-from philocr.workers.handlers.temp_file_manager import TempFileManager
 
 if TYPE_CHECKING:
     import structlog

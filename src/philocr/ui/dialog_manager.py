@@ -6,13 +6,17 @@ and about dialogs, extracting this responsibility from MainWindow.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+else:
+    from collections.abc import Callable
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QDialog, QWidget
 
 from philocr.ui.dialogs import AboutDialog, CredentialsDialog
-from philocr.ui.dialogs.pipeline_config_dialog import PipelineConfigDialog
 from philocr.utils.env_utils import load_env_file
 
 
@@ -66,14 +70,4 @@ class DialogManager:
             self.app_description,
             self.app_copyright,
         )
-        _ = dialog.exec()
-
-    def show_pipeline_config(self) -> None:
-        """Show the pipeline configuration dialog.
-
-        Opens a dialog allowing the user to configure all pipeline
-        parameters including sampling, zone detection, masking, OCR,
-        and assembly settings. Changes are saved to config.yaml.
-        """
-        dialog = PipelineConfigDialog(self.parent_widget)
         _ = dialog.exec()

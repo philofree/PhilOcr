@@ -99,7 +99,7 @@ def retry_with_backoff(
                 raise last_exception
 
             # This is to satisfy the type checker
-            return cast(T, None)
+            return cast("T", None)
 
         return wrapper
 
@@ -141,21 +141,20 @@ def handle_api_errors(
                     function_name=func.__name__,
                 )
                 return fallback_func(*args, **kwargs)
-            elif fallback_value is not None:
+            if fallback_value is not None:
                 logger.info(
                     "using_fallback_value",
                     function_name=func.__name__,
                 )
                 return fallback_value
-            else:
-                logger.exception(
-                    "no_fallback_available",
-                    function_name=func.__name__,
-                    error=str(e),
-                    error_type=type(e).__name__,
-                )
-                flush_loggers()
-                raise
+            logger.exception(
+                "no_fallback_available",
+                function_name=func.__name__,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            flush_loggers()
+            raise
 
     return wrapper
 

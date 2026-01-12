@@ -22,10 +22,10 @@ class ConfigPathResolver:
         """
         if os.name == "nt":  # Windows
             return Path(os.getenv("APPDATA", "")) / "PhilOcr"
-        elif sys.platform == "darwin":  # macOS
+        if sys.platform == "darwin":  # macOS
             return Path.home() / "Library" / "Application Support" / "PhilOcr"
-        else:  # Linux and others
-            return Path.home() / ".config" / "philocr"
+        # Linux and others
+        return Path.home() / ".config" / "philocr"
 
     @staticmethod
     def ensure_config_dir(config_dir: Path) -> None:

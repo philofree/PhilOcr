@@ -152,8 +152,7 @@ class JSONHandler:
         if json_data:
             markdown_result: str = MarkdownHandler.convert_to_markdown(json_data)
             return markdown_result
-        else:
-            return "No data available"
+        return "No data available"
 
     @staticmethod
     def save_as_html(json_data: dict[str, Any], file_path: str) -> bool:

@@ -48,6 +48,7 @@ class ProcessingWorker(QThread):
         parent: Any | None = None,
         temp_cleaner: Any | None = None,
         processing_mode: str = "standard",
+        manual_scan_areas: Any | None = None,  # ManualScanAreas
     ) -> None:
         """Initialize the ProcessingWorker.
 
@@ -56,6 +57,7 @@ class ProcessingWorker(QThread):
             parent: Parent QObject
             temp_cleaner: Temporary file cleaner utility
             processing_mode: Processing mode ("standard" or "advanced_pipeline")
+            manual_scan_areas: Optional manual scan areas for pages
         """
         super().__init__(parent)
         self.file_path: str = file_path
@@ -66,6 +68,7 @@ class ProcessingWorker(QThread):
         self.result_json: dict[str, Any] = {}
         self.metadata: dict[str, Any] = {}
         self.processing_mode: str = processing_mode
+        self.manual_scan_areas: Any | None = manual_scan_areas
 
         # Initialize handlers
         temp_file_manager = TempFileManager(temp_cleaner)
@@ -145,7 +148,7 @@ class ProcessingWorker(QThread):
             worker_error = WorkerError(f"Unexpected error during processing: {e}")
             self.error_signal.emit(str(worker_error))
             self.finished_signal.emit(False)
-            raise worker_error
+            raise worker_error from e
 
     def _process_single_delegated(self, rate_limiter: Any) -> None:
         """Process a single PDF file by delegating to handlers.
@@ -276,7 +279,7 @@ class ProcessingWorker(QThread):
 
             # Process file
             extracted_text, document_json = pipeline_handler.process_single_file(
-                self.file_path, file_name
+                self.file_path, file_name, manual_scan_areas=self.manual_scan_areas
             )
 
             if extracted_text:
@@ -340,7 +343,7 @@ class ProcessingWorker(QThread):
 
                 try:
                     file_text, file_json = pipeline_handler.process_single_file(
-                        file_path, file_name
+                        file_path, file_name, manual_scan_areas=self.manual_scan_areas
                     )
 
                     all_text += f"\n\n--- Document {i+1}: {file_name} ---\n\n"

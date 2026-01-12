@@ -6,10 +6,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from philocr.models.bounding_box import BoundingBox
-
 if TYPE_CHECKING:
+    from philocr.models.bounding_box import BoundingBox
     from philocr.models.template import DocumentTemplate
+else:
+    from philocr.models.bounding_box import BoundingBox
 
 
 class GenreHint(Enum):
@@ -147,24 +148,7 @@ class Document:
                 "edition": self.metadata.edition,
                 "year": self.metadata.year,
             },
-            "template": {
-                "page_width": self.template.page_width,
-                "page_height": self.template.page_height,
-                "body_left": self.template.body_left,
-                "body_right": self.template.body_right,
-                "body_top": self.template.body_top,
-                "body_bottom": self.template.body_bottom,
-                "header_bottom": self.template.header_bottom,
-                "footer_top": self.template.footer_top,
-                "left_margin_right": self.template.left_margin_right,
-                "right_margin_left": self.template.right_margin_left,
-                "footnote_separator_y": self.template.footnote_separator_y,
-                "pages_analysed": self.template.pages_analysed,
-                "confidence": self.template.confidence,
-                "has_line_numbers_left": self.template.has_line_numbers_left,
-                "has_line_numbers_right": self.template.has_line_numbers_right,
-                "has_footnotes": self.template.has_footnotes,
-            },
+            "template": self.template.__dict__,
             "pages": [
                 {
                     "page_num": p.page_num,

@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QButtonGroup,
+    QHBoxLayout,
     QLabel,
     QProgressBar,
     QPushButton,
@@ -37,8 +39,7 @@ class MainWindowUI:
         markdown_preview: Markdown preview widget
         html_preview: HTML preview widget
         json_preview: JSON preview widget
-        template_preview_image: Template preview image widget (new)
-        template_preview_text: Template preview text widget (new)
+        scan_area_tab: Scan area selection tab container widget
         select_button: Select PDF button
         batch_button: Batch process button
         load_json_button: Load JSON button
@@ -62,8 +63,7 @@ class MainWindowUI:
     markdown_preview: QTextEdit
     html_preview: QTextEdit
     json_preview: QTextEdit
-    template_preview_image: QLabel | None
-    template_preview_text: QTextEdit | None
+    scan_area_tab: QWidget
     select_button: QPushButton
     batch_button: QPushButton
     load_json_button: QPushButton
@@ -89,7 +89,8 @@ class MainWindowUIComposer:
     INITIAL_INSTRUCTIONS = """
 PhilOcr
 
-This application processes scanned PDFs of ancient Greek texts using Google's Document AI service.
+This application processes scanned PDFs of ancient Greek texts using
+Google's Document AI service.
 
 To get started:
 1. Click 'Select PDF' to process a single document
@@ -97,7 +98,7 @@ To get started:
 3. After processing, click 'Save Text' to save the extracted text
 4. You can also save JSON, HTML, or Markdown versions of the results
 
-Note: 
+Note:
 - Processing times depend on document size and complexity
 - The application respects Google's rate limits (15 requests/minute)
 - Documents larger than 15 pages are automatically split into smaller chunks
@@ -134,11 +135,35 @@ Note:
         """
         main_widget, main_layout = self._setup_main_layout()
 
-        self._setup_header(main_layout)
-        mode_selector_widget, mode_radios = self._setup_mode_selector(main_layout)
-        buttons = self._setup_buttons(main_layout)
-        status_text = self._setup_status_section(main_layout)
-        tabs = self._setup_tabs(main_layout)
+        # Create left panel container
+        left_panel = QWidget()
+        left_panel.setFixedWidth(250)
+        left_panel_layout = QVBoxLayout(left_panel)
+        left_panel_layout.setContentsMargins(10, 3, 5, 3)
+        left_panel_layout.setSpacing(0)
+
+        # Create right panel container
+        right_panel = QWidget()
+        right_panel_layout = QVBoxLayout(right_panel)
+        right_panel_layout.setContentsMargins(0, 0, 0, 0)
+        right_panel_layout.setSpacing(0)
+
+        # Add panels to main layout
+        main_layout.addWidget(left_panel)
+        main_layout.addWidget(right_panel, 1)
+
+        # Setup widgets for left panel
+        self._setup_header(left_panel_layout)
+        # Add spacing before mode selector
+        left_panel_layout.addSpacing(15)
+        mode_selector_widget, mode_radios = self._setup_mode_selector(
+            left_panel_layout
+        )
+        buttons = self._setup_buttons(left_panel_layout)
+        left_panel_layout.addStretch()
+
+        # Setup widgets for right panel
+        tabs, status_text = self._setup_tabs_and_status(right_panel_layout)
 
         # Create stage progress widget
         stage_progress = StageProgressWidget()
@@ -153,8 +178,7 @@ Note:
             markdown_preview=tabs["markdown_preview"],
             html_preview=tabs["html_preview"],
             json_preview=tabs["json_preview"],
-            template_preview_image=tabs.get("template_preview_image"),
-            template_preview_text=tabs.get("template_preview_text"),
+            scan_area_tab=tabs.get("scan_area_tab"),
             select_button=buttons["select"],
             batch_button=buttons["batch"],
             load_json_button=buttons["load_json"],
@@ -178,14 +202,16 @@ Note:
         """
         text_edit.setPlainText(self.INITIAL_INSTRUCTIONS.strip())
 
-    def _setup_main_layout(self) -> tuple[QWidget, QVBoxLayout]:
+    def _setup_main_layout(self) -> tuple[QWidget, QHBoxLayout]:
         """Set up the main widget and layout.
 
         Returns:
             Tuple of (main widget, main layout)
         """
         main_widget = QWidget()
-        main_layout = QVBoxLayout(main_widget)
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         return main_widget, main_layout
 
     def _setup_header(self, main_layout: QVBoxLayout) -> None:
@@ -207,21 +233,14 @@ Note:
             Dictionary of button widgets keyed by button name
         """
         button_layout, buttons = self.ui_builder.create_button_section()
-        main_layout.addLayout(button_layout)
+        container = QWidget()
+        container_layout = QHBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.addStretch()
+        container_layout.addLayout(button_layout)
+        container_layout.addStretch()
+        main_layout.addWidget(container)
         return buttons
-
-    def _setup_status_section(self, main_layout: QVBoxLayout) -> QLabel:
-        """Set up the status section.
-
-        Args:
-            main_layout: Main layout to add status to
-
-        Returns:
-            Status text label widget
-        """
-        status_frame, status_text = self.ui_builder.create_status_section()
-        main_layout.addWidget(status_frame)
-        return status_text
 
     def _setup_mode_selector(
         self, main_layout: QVBoxLayout
@@ -234,38 +253,33 @@ Note:
         Returns:
             Tuple of (mode selector widget, dictionary of radio buttons)
         """
-        from PyQt6.QtWidgets import QFrame, QHBoxLayout
+        from PyQt6.QtWidgets import QFrame
 
         mode_frame = QFrame()
-        mode_layout = QHBoxLayout(mode_frame)
+        mode_layout = QVBoxLayout(mode_frame)
+        mode_layout.setContentsMargins(50, 0, 0, 10)
+        mode_layout.setSpacing(8)
 
-        mode_label = QLabel("Processing Mode:")
-        mode_label.setFont(mode_label.font())
+        gentium_font = QFont("Gentium", 14)
 
         standard_radio = QRadioButton("Standard OCR")
+        standard_radio.setFont(gentium_font)
         standard_radio.setChecked(True)
-        standard_radio.setToolTip("Direct Document AI processing (current behavior)")
+        standard_radio.setToolTip("Full-page OCR - sends entire page to Document AI")
 
-        pipeline_radio = QRadioButton("Advanced Pipeline")
-        pipeline_radio.setToolTip("Template-based masking for contamination exclusion")
+        pipeline_radio = QRadioButton("Manual Scan Area")
+        pipeline_radio.setFont(gentium_font)
+        pipeline_radio.setToolTip(
+            "User-defined scan areas - crop pages before OCR to exclude "
+            "margins/footnotes"
+        )
 
         mode_group = QButtonGroup()
         mode_group.addButton(standard_radio, 0)
         mode_group.addButton(pipeline_radio, 1)
 
-        # Add pipeline config button
-        config_button = QPushButton("Pipeline Config...")
-        config_button.setToolTip(
-            "Configure advanced pipeline parameters (sampling, zones, masking, etc.)"
-        )
-        _ = config_button.clicked.connect(self.ui_builder.on_pipeline_config)
-        config_button.setMaximumWidth(150)
-
-        mode_layout.addWidget(mode_label)
         mode_layout.addWidget(standard_radio)
         mode_layout.addWidget(pipeline_radio)
-        mode_layout.addWidget(config_button)
-        mode_layout.addStretch()
 
         main_layout.addWidget(mode_frame)
 
@@ -274,22 +288,30 @@ Note:
             "pipeline": pipeline_radio,
         }
 
-    def _setup_tabs(
-        self, main_layout: QVBoxLayout
-    ) -> dict[str, QWidget | QProgressBar | QTabWidget | QTextEdit | None]:
-        """Set up tab widget and progress bar.
+    def _setup_tabs_and_status(
+        self, right_panel_layout: QVBoxLayout
+    ) -> tuple[dict[str, QWidget | QProgressBar | QTabWidget | QTextEdit | None], QLabel]:
+        """Set up tab widget with status above.
 
         Args:
-            main_layout: Main layout to add tabs to
+            right_panel_layout: Right panel layout to add tabs to
 
         Returns:
-            Dictionary containing progress_bar, tab_widget, and tab widgets
+            Tuple of (dictionary containing progress_bar, tab_widget, and tab widgets, status_text label)
         """
         progress_bar = self.ui_builder.create_progress_bar()
-        main_layout.addWidget(progress_bar)
 
         tab_widget, tabs = self.ui_builder.create_tabs()
-        main_layout.addWidget(tab_widget, 1)
+
+        # Create compact status label
+        status_text = QLabel("PhilOcr v3.0")
+        status_text.setFont(QFont("Gentium", 12))
+        status_text.setStyleSheet("color: #1e3a6e; padding: 2px 10px;")
+        status_text.setMaximumHeight(24)
+
+        # Add status above tabs
+        right_panel_layout.addWidget(status_text, 0)
+        right_panel_layout.addWidget(tab_widget, 1)
 
         return {
             "progress_bar": progress_bar,
@@ -298,6 +320,5 @@ Note:
             "markdown_preview": tabs["markdown_preview"],
             "html_preview": tabs["html_preview"],
             "json_preview": tabs["json_preview"],
-            "template_preview_image": tabs.get("template_preview_image"),
-            "template_preview_text": tabs.get("template_preview_text"),
-        }
+            "scan_area_tab": tabs.get("scan_area_tab"),
+        }, status_text

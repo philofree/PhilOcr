@@ -88,40 +88,38 @@ def determine_processing_mode(file_size_mb: float) -> str:
     """
     if file_size_mb < SMALL_FILE_THRESHOLD_MB:
         return "standard"
-    elif file_size_mb < LARGE_FILE_THRESHOLD_MB:
+    if file_size_mb < LARGE_FILE_THRESHOLD_MB:
         return "chunked"
-    else:
-        # Check if ijson is available for streaming
-        try:
-            import importlib.util
+    # Check if ijson is available for streaming
+    try:
+        import importlib.util
 
-            _ = importlib.util.find_spec("ijson")
-            if _ is not None:
-                return "streaming"
-            else:
-                logger.warning(
-                    "ijson_not_available",
-                    fallback_mode="chunked",
-                    file_size_mb=file_size_mb,
-                    processing_strategy="chunked_processing",
-                    reason="ijson_not_installed",
-                )
-                return "chunked"
-        except ImportError as e:
-            logger.error(
-                "importlib_unavailable",
-                file_size_mb=file_size_mb,
-                error=str(e),
-                error_type=type(e).__name__,
-                exc_info=True,
-            )
-            from philocr.utils.logging_config import flush_loggers
+        _ = importlib.util.find_spec("ijson")
+        if _ is not None:
+            return "streaming"
+        logger.warning(
+            "ijson_not_available",
+            fallback_mode="chunked",
+            file_size_mb=file_size_mb,
+            processing_strategy="chunked_processing",
+            reason="ijson_not_installed",
+        )
+        return "chunked"
+    except ImportError as e:
+        logger.error(
+            "importlib_unavailable",
+            file_size_mb=file_size_mb,
+            error=str(e),
+            error_type=type(e).__name__,
+            exc_info=True,
+        )
+        from philocr.utils.logging_config import flush_loggers
 
-            flush_loggers()
-            raise RuntimeError(
-                "CRITICAL: importlib.util is required (part of standard library). "
-                f"This indicates a system configuration problem - {e}"
-            ) from e
+        flush_loggers()
+        raise RuntimeError(
+            "CRITICAL: importlib.util is required (part of standard library). "
+            f"This indicates a system configuration problem - {e}"
+        ) from e
 
 
 def memory_managed_operation(func: Callable[..., R]) -> Callable[..., R]:

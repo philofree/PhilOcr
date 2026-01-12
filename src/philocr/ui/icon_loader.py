@@ -30,9 +30,8 @@ def _get_icons_base_path() -> str:
     if getattr(sys, "frozen", False):
         # Running in a bundled application
         return os.path.join(sys._MEIPASS, "philocr_icons")  # type: ignore
-    else:
-        # Running in development
-        return "philocr_icons"
+    # Running in development
+    return "philocr_icons"
 
 
 def _get_icon_candidates() -> list[str]:

@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import os
 import tempfile
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from philocr.models.config import PipelineConfig
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from philocr.models.config import PipelineConfig
+else:
+    from collections.abc import Callable
+
+    from philocr.models.config import PipelineConfig
 from philocr.models.document import Document, DocumentMetadata
 from philocr.pipeline.orchestrator import PipelineOrchestrator
 from philocr.utils.logging_config import get_logger
@@ -47,8 +53,8 @@ class PipelineHandler:
         self.on_status_update = on_status_update
         self.on_progress_update = on_progress_update
         self.on_text_update = on_text_update
-        self.on_stage_progress = on_stage_progress or (lambda *args: None)
-        self.on_template_ready = on_template_ready or (lambda *args: None)
+        self.on_stage_progress = on_stage_progress or (lambda *_args: None)
+        self.on_template_ready = on_template_ready or (lambda *_args: None)
 
     def process_single_file(
         self,
@@ -57,6 +63,7 @@ class PipelineHandler:
         project_id: str | None = None,
         location: str | None = None,
         processor_id: str | None = None,
+        manual_scan_areas: Any | None = None,  # ManualScanAreas
     ) -> tuple[str, dict[str, Any]]:
         """Process a single file through the pipeline.
 
@@ -95,9 +102,10 @@ class PipelineHandler:
                 project_id=project_id,
                 location=location,
                 processor_id=processor_id,
+                manual_scan_areas=manual_scan_areas,
             )
 
-            # Generate template visualization before temp dir is deleted
+            # Generate template visualization using sample page zones
             visualization_path = None
             stage1_dir = output_base_dir / "stage1_normalised"
             sample_image_path = stage1_dir / "page_0000.png"
@@ -105,12 +113,12 @@ class PipelineHandler:
                 try:
                     import hashlib
 
+                    from philocr.detection.zones import detect_page_zones
+                    from philocr.pipeline.utils.image_io import load_image
                     from philocr.pipeline.utils.template_visualizer import (
-                        visualise_template,
+                        visualise_zones,
                     )
-                    from philocr.utils.config_path_resolver import (
-                        ConfigPathResolver,
-                    )
+                    from philocr.utils.config_path_resolver import ConfigPathResolver
 
                     # Get cache directory
                     config_dir = ConfigPathResolver.get_config_directory()
@@ -118,15 +126,15 @@ class PipelineHandler:
                     cache_dir.mkdir(parents=True, exist_ok=True)
 
                     # Generate visualization path
-                    file_hash = hashlib.md5(
-                        file_path.encode()
-                    ).hexdigest()[:8]
+                    file_hash = hashlib.md5(file_path.encode()).hexdigest()[:8]
                     visualization_path = cache_dir / f"template_vis_{file_hash}.png"
 
-                    # Generate visualization
-                    visualise_template(
+                    # Detect zones for sample page and generate visualization
+                    sample_image = load_image(str(sample_image_path))
+                    sample_zones = detect_page_zones(sample_image, orchestrator.config)
+                    visualise_zones(
                         str(sample_image_path),
-                        document.template,
+                        sample_zones,
                         str(visualization_path),
                     )
                     logger.debug(
@@ -145,22 +153,8 @@ class PipelineHandler:
             # Emit template ready signal
             if self.on_template_ready:
                 template_dict = {
-                    "page_width": document.template.page_width,
-                    "page_height": document.template.page_height,
-                    "body_left": document.template.body_left,
-                    "body_right": document.template.body_right,
-                    "body_top": document.template.body_top,
-                    "body_bottom": document.template.body_bottom,
-                    "header_bottom": document.template.header_bottom,
-                    "footer_top": document.template.footer_top,
-                    "left_margin_right": document.template.left_margin_right,
-                    "right_margin_left": document.template.right_margin_left,
-                    "footnote_separator_y": document.template.footnote_separator_y,
                     "pages_analysed": document.template.pages_analysed,
                     "confidence": document.template.confidence,
-                    "has_line_numbers_left": document.template.has_line_numbers_left,
-                    "has_line_numbers_right": document.template.has_line_numbers_right,
-                    "has_footnotes": document.template.has_footnotes,
                 }
                 if visualization_path:
                     template_dict["visualization_path"] = str(visualization_path)

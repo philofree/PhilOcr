@@ -6,15 +6,18 @@ This module handles file selection, loading, and saving operations.
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+else:
+    from collections.abc import Callable
 
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 from philocr.utils.document_ai_formatter import extract_text_only
-from philocr.utils.exceptions import FileLoadError
+from philocr.utils.exceptions import FileLoadError, FileSaveError
 from philocr.utils.exceptions import FileNotFoundError as PhilOcrFileNotFoundError
-from philocr.utils.exceptions import FileSaveError
 from philocr.utils.file_io import (
     HTMLSaver,
     JSONLoader,
@@ -250,7 +253,7 @@ class FileOperationsManager:
                 file_name = os.path.basename(file_path)
                 self.on_status_update(f"Loaded JSON from {file_name}")
             except (PhilOcrFileNotFoundError, FileLoadError) as e:
-                logger.error(
+                logger.error(  # noqa: TRY400
                     "json_file_not_found",
                     file_path=file_path,
                     error=str(e),
@@ -276,6 +279,4 @@ class FileOperationsManager:
                     "Load Error",
                     f"Error loading JSON file: {str(e)}",
                 )
-                raise RuntimeError(
-                    f"CRITICAL: JSON file load failed - {e}"
-                ) from e
+                raise RuntimeError(f"CRITICAL: JSON file load failed - {e}") from e
