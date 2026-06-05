@@ -1,4 +1,4 @@
-# macOS system files
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -15,44 +15,44 @@ ENV/
 dev_env/
 .python-version
 
-# PyInstaller build directories and files
+# PyInstaller
 build/
 dist/
 *.spec
 
-# Python bytecode
+# Python bytecode and test artifacts
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .coverage
-htmlcov/
-
-# Build logs and temporary files
-build_log.txt
-*.log
 .coverage.*
+htmlcov/
 coverage/
 .cache/
-.pytest_cache/
 nosetests.xml
 coverage.xml
+*.log
+build_log.txt
 
-# Backup directories
+# Backup directories and files
 backup_*/
+*.backup
+* 2.py
+* 2
 
-# Environment files (keep templates only)
+# Environment and secrets
 ENV.local
 *.env
 .env
 .envrc
 .direnv
-# Add any other env file patterns
 .env.*
 .envs/
 credentials*.json
+secrets/
 
-# IDE specific files
+# IDE
 .idea/
 .vscode/
 *.swp
@@ -64,7 +64,7 @@ credentials*.json
 .spyproject
 .vs/
 
-# OS specific
+# OS
 *~
 Thumbs.db
 
@@ -84,12 +84,11 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-.eggs/
 
-# Jupyter Notebook
+# Jupyter
 .ipynb_checkpoints
 
-# PyQt specific
+# PyQt generated
 *_ui.py
 *.qm
 *.qrc.py
@@ -98,13 +97,13 @@ MANIFEST
 temp-*
 tem_*
 
-# Test files and output
+# Test output
 test_output/
 *_test_output/
 test_files/
 *_test_files/
 
-# Output file formats
+# Output formats (keep config json only)
 *.json
 !package.json
 !package-lock.json
@@ -116,67 +115,21 @@ test_files/
 !index.html
 !templates/*.html
 
-# Specific directories with large files
+# Large sample data
 doc_ai_json_samples/
 json_files/
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
-venv/
-ENV/
-env/
-.env/
-.venv/
-venv.backup*/
-venv.*/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Ignore secrets and credentials
-secrets/
-
-# Ignore guardians directory
-guardians/
-work_reports/
-
-# Local AI agent config and design docs (machine-local, not for repo)
-CLAUDE.md
-.claude/
-design/CANONICAL_DESIGN_PRINCIPLES.md
-design/anti_patterns.jsonl
-
-# Translation benchmark data (local)
+# Local datasets
 translations/*.xlsx
 
-# Guardian violation reports (should be in guardians/framework/core/logs)
-god_class_violations.csv
-god_class_violations.json
+# Private infrastructure — canonical copy lives in PhilOcr-private repo
+guardians/
+work_reports/
+.cursor/
+.claude/
+CLAUDE.md
+design/
+rules_*.yaml
+RULES_OVERVIEW.md
+.pre-commit-guardians.py
+framework/

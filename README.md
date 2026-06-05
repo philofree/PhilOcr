@@ -1,75 +1,60 @@
-# Philofree OCR: Processing Ancient Greek Texts
+# PhilOcr — Rescuing Ancient Greek from the PDF Graveyard
 
-**Part of the [Philofree Project](https://philofree.com)**
+Thousands of critical editions of ancient Greek literature exist only as scanned PDFs: Burnet's Plato, Bekker's Aristotle, the OCT volumes that generations of scholars have annotated and cited. They're out of copyright. They're freely downloadable. And they're almost completely useless to machines.
 
-## Overview
+The text is locked in images. Standard OCR tools fail badly on polytonic Greek — the accents, breathings, and iota subscripts that distinguish one word from another get mangled or dropped entirely. Most digitization efforts have relied on Tesseract with custom Greek classifiers, which works well enough on clean modern typefaces but struggles with the aged, varied typography of 19th- and early 20th-century scholarly editions.
 
-This tool processes scanned PDFs of ancient Greek texts using Google Document AI, producing clean digital text ready for the Philofree corpus. It is designed to digitize out-of-copyright print editions and make them available for scholarly use.
+PhilOcr takes a different approach. It uses Google Document AI — a neural OCR engine that significantly outperforms Tesseract on complex historical typography — and wraps it in a purpose-built pipeline that understands how scholarly editions are structured. It doesn't just extract characters; it understands that the number in the left margin is a line reference, that the small text at the bottom is a footnote, that the all-caps header marks a new section.
 
-The tool handles scanned PDFs of ancient Greek literature and converts them to structured digital formats suitable for text processing and analysis.
+The output is clean, structured, Unicode-normalized Greek text ready for downstream processing — or for a corpus like [Eulogikon](https://eulogikon.org).
 
-## Features
+## Why This Exists
 
-- **PDF processing** with automatic handling of large scholarly editions
-- **Polytonic Greek support** — full Unicode coverage for ancient Greek diacritics
-- **Multiple output formats** — Text, Markdown, HTML, JSON (ready for Philofree pipeline integration)
-- **Document structure identification** — automatically identifies line numbers, footnotes, headers, indentation levels, and references
-- **Manual scan area selection** — precise 4-corner polygon selection for cropping text areas, with mask/whiteout for excluding unwanted content
-- **Memory-efficient processing** — handles large critical editions efficiently
-- **Batch processing** — process entire library collections systematically
+The Perseus Digital Library and First1KGreek have done heroic work digitizing ancient texts. But their coverage has gaps, their sources are sometimes older transcriptions, and the long tail of scholarly editions — the ones with the best critical apparatus, the most reliable text — remains largely undigitized.
 
-## How It Fits the Philofree Pipeline
+The bottleneck isn't access. It's the OCR step.
 
+PhilOcr is designed to close that gap: take any scanned PDF of an out-of-copyright edition, run it through, and get structured text out the other side. One tool, reproducible pipeline, public domain output.
+
+## What It Does That Others Don't
+
+Most Greek OCR tools stop at character recognition. PhilOcr goes further:
+
+**Structure-aware parsing.** The academic document parser identifies structural elements by their position on the page — line numbers sit in the left margin at predictable x-coordinates, footnotes cluster at the bottom with distinct formatting, headers are typically all-caps. These elements are categorized and preserved in the output, not flattened into a stream of characters.
+
+**Precise scan control.** A visual scan-area editor lets you draw an exact 4-corner polygon around the text block on each page — not just a bounding box — and whiteout-mask anything inside it you want excluded (folio marks, marginalia, library stamps). Essential for skewed scans where rectangular cropping pulls in the margins.
+
+**Scale without pain.** A 2,000-page critical edition is a different beast from a 50-page fragment. PhilOcr automatically selects the right processing strategy: direct for small files under 50MB, chunked for 50–200MB, and streaming via `ijson` for anything larger. No manual configuration needed.
+
+**Pipeline-ready output.** The JSON output maps directly to reference systems (Stephanus, Bekker, OCT line numbers) and is ready for sentence segmentation, corpus integration, or your own downstream processing.
+
+**Full polytonic Unicode.** NFC-normalized output with complete coverage of ancient Greek diacritics. No half-measures.
+
+## How It Works
+
+The application is a four-stage pipeline behind a PyQt6 desktop interface:
+
+| Stage | Job |
+|-------|-----|
+| 1 Normalize | PDF → grayscale, deskewed page images |
+| 2 Mask | Apply your scan areas and whiteout masks |
+| 3 OCR | Google Document AI → raw structured OCR result |
+| 4 Assemble | Raw result → clean Greek text with document structure |
+
+Each stage owns exactly one transformation; typed model objects flow between them. The result is reproducible and debuggable — when output is wrong, you can see which stage broke.
+
+## Quickstart
+
+```bash
+git clone https://github.com/philofree/PhilOcr.git
+cd PhilOcr
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp ENV.template ENV.local   # add your Google Cloud credentials
+python -m src.philocr.main
 ```
-Scanned PDF (print edition)
-        ↓
-   Philofree OCR (this tool)
-        ↓
-   Raw Greek text + metadata
-        ↓
-   Philofree processing pipeline
-        ↓
-   Canonical JSON → philofree.com
-```
 
-The OCR output feeds directly into our text processing pipeline, where it receives:
-- Sentence segmentation with Philofree IDs
-- Reference system mapping (Stephanus, Bekker, etc.)
-- Integration with the searchable corpus
-
-## Setup Instructions
-
-### Prerequisites
-
-- Python 3.12 or higher
-- Google Cloud account with Document AI enabled
-- Document AI processor configured for OCR
-
-### Installation
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/philofree/ocr.git
-   cd ocr
-   ```
-
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   
-   # Optional: Install ijson for optimal performance with large files
-   pip install ijson
-   ```
-
-4. Configure credentials:
-   - Copy `ENV.template` to `ENV.local`
-   - Add your Google Cloud credentials
+Requires Python 3.12+ and a Google Cloud account with Document AI enabled.
 
 ### Google Document AI Setup
 
@@ -77,248 +62,69 @@ The OCR output feeds directly into our text processing pipeline, where it receiv
 2. Enable the Document AI API
 3. Create a Document AI processor for OCR
 4. Create a service account and download the JSON key file
-5. Update your `ENV.local` file with the appropriate values
+5. Add the values to `ENV.local`
 
-**Note on costs**: Google Document AI offers a free tier sufficient for small projects. For large-scale digitization, costs vary based on usage volume.
+**Costs:** Google's free tier covers small projects. For library-scale digitization, costs scale with volume but remain reasonable.
 
-## Usage
+## Using the Scan Area Editor
 
-### Running the Application
+The "Scan Area Selection" tab gives you page-by-page control over what gets OCR'd:
 
-```bash
-python -m src.philocr.main
-```
+1. **Select a PDF** and open the Scan Area Selection tab
+2. **Adjust the green quadrilateral** on each page — drag corners to position precisely, drag edges to resize, drag the middle to move, mouse-wheel to zoom (50%–300%)
+3. **Copy across pages** with "Copy to Next →" or "Copy to All Following →" for consistent layouts
+4. **Mask unwanted content**: enable Mask Mode, then draw whiteout rectangles over folio marks, page numbers, or marginalia inside your scan area. Double-click a mask to delete it.
+5. **Save** (stored as `.scan_areas.json` alongside your PDF, auto-loaded next time) and **Process**
 
-### Manual Scan Area Selection
+Cropping respects your exact polygon: everything outside the four corners is whited out, even within the bounding box. Your pixel-perfect corner placement is preserved.
 
-The application provides a "Scan Area Selection" tab for precise control over which parts of each page to process:
+## Output
 
-#### Setting Up Scan Areas
+- Text, Markdown, HTML, and JSON formats
+- Full polytonic Greek, Unicode NFC normalized
+- Line numbers, footnotes, headers, and indentation levels identified and preserved
+- Page structure maintained for cross-reference with the print edition
+- Metadata for bibliographic tracking
 
-1. **Select a PDF** and navigate to the "Scan Area Selection" tab
-2. **Adjust the green rectangle** for each page:
-   - **Drag corners** to position precisely (respects exact quadrilateral, not just bounding box)
-   - **Drag edges** to resize
-   - **Drag in the middle** to move the entire selection area
-   - **Mouse wheel** to zoom in/out (50%-300%) for precise positioning
-
-3. **Copy to multiple pages** (for consistent layouts):
-   - **"Copy to Next →"** — applies current scan area to the next page
-   - **"Copy to All Following →"** — applies to all remaining pages
-
-#### Using Mask/Whiteout Feature
-
-For excluding unwanted content (folio marks, page numbers, marginalia) that falls within your scan area:
-
-1. **Enable Mask Mode**: Check the "Mask Mode (Draw Whiteout)" checkbox for the page
-2. **Draw masks**: Click and drag to draw rectangles over content to exclude
-   - Red dashed border shows the mask as you draw
-   - Completed masks appear as semi-transparent white rectangles with red borders
-3. **Delete individual masks**: Double-click on any mask to remove it
-4. **Clear all masks**: Click "Clear Masks" button to start over
-
-#### How Polygon Cropping Works
-
-Unlike simple rectangular cropping, PhilOcr respects your exact 4-corner selection:
-- Creates a precise polygon mask from your corners
-- Whites out everything outside the polygon (even if it's in the bounding box)
-- Essential for skewed pages where rectangular cropping would include margins
-- Your pixel-perfect corner placement is preserved
-
-#### Saving and Processing
-
-1. **Save Scan Areas**: Click "Save Scan Areas" button (saves to `.scan_areas.json` alongside your PDF)
-2. **Process**: Click "Process Scan Areas" to run OCR with your selections
-3. Scan areas and masks are automatically loaded next time you open the same PDF
-
-### Processing a Single File
+Convert OCR JSON to Markdown programmatically:
 
 ```python
 from utils.markdown_converter.markdown_handler import MarkdownHandler
 
-# Convert OCR JSON output to markdown
 MarkdownHandler.save_file_as_markdown(
     json_file_path="path/to/ocr_output.json",
-    output_file_path="path/to/greek_text.md"
+    output_file_path="path/to/greek_text.md",
 )
 ```
 
-### Batch Processing (Recommended for Library Digitization)
+## The Broader Picture
 
-```bash
-# Process all PDFs in a directory
-python test_large_file_batch.py --dir /path/to/scanned_editions --output digitized_texts
+PhilOcr is one component of the [Eulogikon Project](https://eulogikon.org), which aims to build a freely searchable, freely usable corpus of ancient Greek literature with sentence-level IDs and canonical reference mapping.
 
-# Process a specific file
-python test_large_file_batch.py --file /path/to/plato_republic_1903.json --output output_dir
-```
-
-## Building Standalone Applications
-
-### macOS
-```bash
-./src/philocr/build_package.sh
-```
-
-### Windows
-```bash
-.\src\philocr\build_package.bat
-```
-
-## Technical Details
-
-### Supported Input Formats
-
-The markdown converter handles multiple JSON output formats from Document AI:
-- Standard format with `document_data` and `pages`
-- Alternative format with `files` array and page markers
-- Chunked format for very large documents
-
-### Processing Strategies
-
-The tool automatically selects the optimal processing method based on file size:
-- **Direct processing** for small files (< 50MB)
-- **Chunked processing** for large files (50-200MB)
-- **Streaming processing** with ijson for very large files (> 200MB)
-
-This ensures that a 2000-page critical edition processes just as reliably as a 50-page fragment collection.
-
-### Document Structure Parsing
-
-The academic document parser automatically identifies and categorizes structural elements in scholarly texts:
-
-- **Line numbers** — identified by position (typically in the left margin)
-- **Footnotes** — detected at the bottom of pages by position and formatting patterns
-- **Headers** — recognized as all caps text (typically section titles)
-- **Indentation levels** — calculated from x-coordinate positions to preserve hierarchical structure
-- **References** — detected through pattern matching (e.g., fragment references, citations)
-
-These elements are properly categorized and formatted in the output to maintain the scholarly structure of the original document.
-
-### Output Quality
-
-- Full polytonic Greek character preservation (Unicode NFC normalized)
-- Page structure maintained for cross-reference with print editions
-- Paragraph and line breaks preserved where meaningful
-- Document structure elements (line numbers, footnotes, headers) properly identified and formatted
-- Metadata extraction for bibliographic tracking
-
-## Project Structure
-
-```
-PhilOcr/
-├── src/philocr/            # Main application code
-│   ├── main.py             # Application entry point
-│   ├── config/             # Configuration handling
-│   ├── processing/         # OCR processing logic
-│   ├── ui/                 # User interface (PyQt6)
-│   └── utils/              # Utilities and helpers
-├── tests/                  # Test suite
-│   ├── markdown_converter/ # Converter tests
-│   └── fixtures/           # Test data
-├── docs/                   # Documentation
-└── utils/                  # Standalone utilities
-    └── markdown_converter/ # JSON-to-Markdown converter
-```
-
-## Contributing
-
-Contributions are welcome.
-
-**Ways to contribute**:
-- Improve OCR accuracy for polytonic Greek
-- Add support for additional output formats
-- Enhance batch processing capabilities
-- Document edge cases in Greek text processing
-- Test with diverse print edition formats
-
-### Development Workflow
-
-1. Place source code in `src/philocr/`
-2. Place tests in `tests/`
-3. Use absolute imports: `from philocr.main import ...`
-4. Run `pre-commit run --all-files` before committing
-5. Add entries to the Development Log for significant changes
-
-### Code Quality
-
-Pre-commit hooks enforce:
-- Ruff linting
-- Black formatting
-- isort import sorting
-- mypy type checking
+But the OCR tool itself is completely standalone and has no dependency on Eulogikon infrastructure. If you want to digitize a run of Loeb volumes, build your own corpus, feed texts into an LLM, or just read Thucydides on your e-reader without hunting for a good plain-text version — this works for all of that.
 
 ## License
 
-**CC0 1.0 Universal — Public Domain Dedication**
+CC0 1.0 Universal — Public Domain Dedication.
 
-This tool is dedicated to the public domain. You can copy, modify, distribute, and use it for any purpose, including commercial purposes, without asking permission.
+No rights reserved. Copy it, fork it, sell it, use it in your own project. No attribution required, no permission needed.
 
-See [LICENSE](LICENSE) for full details.  
-More about CC0: https://creativecommons.org/publicdomain/zero/1.0/
+This is intentional. Knowledge about the ancient world belongs to everyone.
 
-## Security Notes
+## Contributing
 
-- Never commit `ENV.local` or credential files
-- Store Google Cloud credentials securely
-- The application uses environment variables, not hardcoded credentials
+The most valuable contributions right now:
 
-## Troubleshooting
+- **Test against diverse editions** — different publishers, typefaces, and scan qualities expose edge cases in the structure parser
+- **Improve footnote detection** — critical apparatus footnotes are particularly complex and the current heuristics have known failure modes
+- **Additional output formats** — TEI XML would make this useful to a much wider DH audience
+- **Accuracy benchmarks** — comparative data against Tesseract on a standard set of scans would be genuinely useful to the field
 
-**Qt plugin issues (macOS)**:
+Development conventions: source in `src/philocr/`, tests in `tests/`, absolute imports (`from philocr...`). Run the test suite and guardians before committing:
+
 ```bash
-./src/philocr/reinstall_qt.sh
+python -m pytest tests/ -x -q
+python guardians/run_all_guardians.py --root .
 ```
 
-**Large file processing failures**: Install ijson for streaming support:
-```bash
-pip install ijson
-```
-
-**Polytonic character issues**: Ensure your terminal/editor supports Unicode and the output files are UTF-8 encoded.
-
-## Acknowledgments
-
-- **Google Document AI** — OCR engine with excellent Greek character recognition
-- **PyQt6** — Cross-platform user interface
-- **PyMuPDF** — PDF handling and manipulation
-- The **Philofree community** — Testing and feedback
-
-## Related Projects
-
-- **[Philofree](https://philofree.com)** — The main corpus and translation project
-- **[Perseus Digital Library](http://www.perseus.tufts.edu/)** — Open Greek and Latin texts
-- **[First1KGreek](https://opengreekandlatin.github.io/First1KGreek/)** — Community-sourced Greek texts
-- **[Open Greek and Latin](https://github.com/OpenGreekAndLatin)** — TEI XML corpus development
-
----
-
-## Development Log
-
-This project maintains a detailed Development Log tracking changes, issues, solutions, and lessons learned.
-
-### Log Format
-
-```markdown
-## [YYYY-MM-DD] - Brief Title
-
-**Developer:** [Name]
-**Time:** [HH:MM]
-
-### Changes Made
-...
-
-### Issues Encountered
-...
-
-### Solutions Implemented
-...
-
-### Lessons Learned
-...
-
-### Next Steps
-...
-```
-
-The development log preserves institutional knowledge and helps future contributors understand why certain technical decisions were made.
+Related: [Perseus Digital Library](https://www.perseus.tufts.edu) · [First1KGreek](https://opengreekandlatin.github.io/First1KGreek/) · [Open Greek and Latin](https://opengreekandlatin.org)
