@@ -7,19 +7,19 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from philocr.models.config import PipelineConfig
 from philocr.models.page import PageImage
 from philocr.pipeline.utils.deskew import detect_skew, rotate_image
 from philocr.pipeline.utils.image_io import save_image
 from philocr.pipeline.utils.pdf_render import convert_to_grayscale, render_pdf_page
+from philocr.utils.logging_config import flush_loggers, get_logger
 
 if TYPE_CHECKING:
     import structlog
 
+    from philocr.models.config import PipelineConfig
+
     logger: structlog.BoundLogger
 else:
-    from philocr.utils.logging_config import get_logger
-
     logger = get_logger(__name__)
 
 
@@ -118,6 +118,7 @@ def normalise_all_pages(
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                flush_loggers()
                 raise
 
     # Sort by page number

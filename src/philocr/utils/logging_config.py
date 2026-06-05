@@ -99,7 +99,7 @@ def get_logger(name: str | None = None) -> structlog.BoundLogger:
     return structlog.get_logger(name)
 
 
-def flush_loggers() -> None:
+def flush_loggers(*, skip_close: bool = False) -> None:
     """
     Flush all logging handlers.
 
@@ -108,6 +108,10 @@ def flush_loggers() -> None:
 
     Should be called in exception handlers before re-raising to ensure
     diagnostic data is not lost on process exit.
+
+    Args:
+        skip_close: When True, flush handler buffers only (no close). Used
+            when handler close already failed to avoid recursive close errors.
     """
     # Get logger for error reporting (structlog should be configured by now)
     logger = structlog.get_logger(__name__)
@@ -115,6 +119,8 @@ def flush_loggers() -> None:
     # Flush standard library handlers
     for handler in logging.root.handlers[:]:
         handler.flush()
+        if skip_close:
+            continue
         if hasattr(handler, "close"):
             try:
                 handler.close()
@@ -125,6 +131,7 @@ def flush_loggers() -> None:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
+                flush_loggers(skip_close=True)
                 raise RuntimeError(
                     f"CRITICAL: Logging handler close failed - {e}"
                 ) from e
@@ -140,5 +147,5 @@ def flush_loggers() -> None:
             error_type=type(e).__name__,
             exc_info=True,
         )
-        flush_loggers()
+        flush_loggers(skip_close=True)
         raise RuntimeError(f"CRITICAL: Structlog context clear failed - {e}") from e

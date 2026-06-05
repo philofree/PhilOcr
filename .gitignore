@@ -168,6 +168,15 @@ secrets/
 guardians/
 work_reports/
 
+# Local AI agent config and design docs (machine-local, not for repo)
+CLAUDE.md
+.claude/
+design/CANONICAL_DESIGN_PRINCIPLES.md
+design/anti_patterns.jsonl
+
+# Translation benchmark data (local)
+translations/*.xlsx
+
 # Guardian violation reports (should be in guardians/framework/core/logs)
 god_class_violations.csv
 god_class_violations.json
