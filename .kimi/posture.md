@@ -11,7 +11,8 @@ especially the routing table ("Where to look"). Language law:
 How a session runs: [`CLAUDE.md` § Operating posture](../CLAUDE.md). The
 planning graph is [`campaigns/graph.yaml`](../campaigns/graph.yaml); derive its
 frontier with Eustratikon. Known
-failure modes: [`docs/ROT.md`](../docs/ROT.md).
+failure modes: [`docs/ROT.md`](../docs/ROT.md). Python structural read:
+**CLAUDE.md § EuKrinikon** (`make eukrinikon`).
 
 Kimi skills: [`.kimi/skills/`](skills/) — symlinks into
 [`.claude/skills/`](../.claude/skills/), one per entry there. A write

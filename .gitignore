@@ -111,6 +111,8 @@ test_files/
 !tsconfig.json
 !*.config.json
 !manifest.json
+!capability_ports.json
+!PREDICATES.json
 *.docx
 *.html
 !index.html
@@ -127,8 +129,12 @@ translations/*.xlsx
 guardians/
 work_reports/
 .cursor/
-.claude/
-CLAUDE.md
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/eukrinikon/
+!.claude/skills/cold-reading/
+!.claude/skills/verify/
 design/
 rules_*.yaml
 RULES_OVERVIEW.md

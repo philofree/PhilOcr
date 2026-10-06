@@ -116,6 +116,15 @@ The health check fails until the lock is really on.
 
 Owner: [`docs/ROT.md`](../docs/ROT.md) § The parsimony contract.
 
+## The structural flashlight (EuKrinikon)
+
+Guardians catch forbidden shapes at commit time. **EuKrinikon** is a separate
+flashlight for rot and liquefaction in the Python code: it prints *where* a
+smell lives (file, line, probe) without pretending to be the product test.
+Helpers run `make eukrinikon` before big structural edits. The Python port
+lives beside this house as `../eukrinikon_python`. The name is **EuKrinikon**
+(not "EuKryptikon"). Owner: **CLAUDE.md § EuKrinikon**.
+
 ## Name the job before you build it
 
 A button the robot can press that has no name on the roster is a

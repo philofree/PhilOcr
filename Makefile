@@ -1,6 +1,6 @@
 STATICCHECK_VERSION ?= v0.6.1
 
-.PHONY: build verify link now test vet lint pytest clean
+.PHONY: build verify link now eukrinikon test vet lint pytest clean
 
 # House toolchain. The product bar is `make pytest`.
 build:
@@ -15,11 +15,14 @@ link:
 now:
 	go run ./tools/agentctl now
 
+eukrinikon:
+	go run ./tools/agentctl eukrinikon
+
 test:
 	go test ./...
 
 vet:
-	go vet ./...
+	go vet ./tools/agentctl/...
 
 lint: vet
 	@files=$$(gofmt -l tools); \

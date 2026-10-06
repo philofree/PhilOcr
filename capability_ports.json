@@ -1,0 +1,46 @@
+{
+  "_doc": "The capability issuance roster. Doctrine: .claude/skills/cut/references/capability_port.md. Join: go run ./tools/agentctl verify (and go test ./...). Every command a CLI dispatches MUST appear here with an honest disposition, and every row here must dispatch. An unnamed capability is a capability nobody owns. The Python application (src/philocr/main.py) is not a dispatched CLI and has no row here.",
+
+  "_dispositions": {
+    "issued": "a typed port exists that consumers hold; name it in `port` and the file that owns it in `driver`",
+    "instrument": "the runner is live and no port is issued yet — honesty, not failure",
+    "remainder": "still advertised but outside the CLI spine (a script, another language)",
+    "retired-stub": "kept only to refuse, and to tell the caller where the capability went"
+  },
+
+  "clis": [
+    {
+      "entry": "tools/agentctl/main.go",
+      "note": "the agent-surface toolchain that travels with this repository. The OCR application is Python and is not this CLI.",
+      "runners": [
+        {
+          "command": "link",
+          "disposition": "issued",
+          "port": "agentlib.Farm",
+          "driver": "tools/agentctl/linkcmd/link.go"
+        },
+        {
+          "command": "verify",
+          "disposition": "instrument",
+          "driver": "tools/agentctl/verifycmd/verify.go"
+        },
+        {
+          "command": "init",
+          "disposition": "instrument",
+          "driver": "tools/agentctl/initcmd/init.go"
+        },
+        {
+          "command": "now",
+          "disposition": "instrument",
+          "driver": "tools/agentctl/nowcmd/now.go"
+        },
+        {
+          "command": "eukrinikon",
+          "disposition": "instrument",
+          "driver": "tools/agentctl/eukrinikoncmd/eukrinikon.go"
+        }
+      ],
+      "not_capabilities": ["help", "-h", "--help"]
+    }
+  ]
+}

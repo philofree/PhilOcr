@@ -145,11 +145,6 @@ The most valuable contributions right now:
 - **Additional output formats** — TEI XML would make this useful to a much wider DH audience
 - **Accuracy benchmarks** — comparative data against Tesseract on a standard set of scans would be genuinely useful to the field
 
-Development conventions: source in `src/philocr/`, tests in `tests/`, absolute imports (`from philocr...`). Run the test suite and guardians before committing:
-
-```bash
-python -m pytest tests/ -x -q
-python guardians/run_all_guardians.py --root .
-```
+Development conventions: source in `src/philocr/`, tests in `tests/`, absolute imports (`from philocr...`). Product and agent verification bars live in [`CLAUDE.md`](CLAUDE.md) § Commands (including **`make eukrinikon`** for EuKrinikon structural reads via `../eukrinikon_python`). Telos: [`docs/PURPOSE.md`](docs/PURPOSE.md).
 
 Related: [Perseus Digital Library](https://www.perseus.tufts.edu) · [First1KGreek](https://opengreekandlatin.github.io/First1KGreek/) · [Open Greek and Latin](https://opengreekandlatin.org)

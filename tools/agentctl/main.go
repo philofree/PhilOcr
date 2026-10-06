@@ -7,12 +7,14 @@
 //	verify          health-gate the agent surfaces (symlinks, registrations, hooks)
 //	link            (re)build the per-tool skill symlink farms from .claude/skills/
 //	now             regenerate NOW.md from the live handover's quick-start block
+//	eukrinikon      run the sibling Python EuKrinikon scan
 package main
 
 import (
 	"fmt"
 	"os"
 
+	"github.com/philofree/PhilOcr/tools/agentctl/eukrinikoncmd"
 	"github.com/philofree/PhilOcr/tools/agentctl/initcmd"
 	"github.com/philofree/PhilOcr/tools/agentctl/linkcmd"
 	"github.com/philofree/PhilOcr/tools/agentctl/nowcmd"
@@ -26,6 +28,7 @@ Usage:
   agentctl verify [-root DIR]          health-gate all agent surfaces
   agentctl link   [-root DIR] [-prune] rebuild skill symlink farms
   agentctl now    [-root DIR]          regenerate NOW.md from the live handover
+  agentctl eukrinikon [-root DIR] [-target DIR] [--json] [--zone a,b]
 
 Init flags:
   -name        display name               (default: target dir basename)
@@ -53,6 +56,8 @@ func main() {
 		os.Exit(linkcmd.Run(os.Args[2:]))
 	case "now":
 		os.Exit(nowcmd.Run(os.Args[2:]))
+	case "eukrinikon":
+		os.Exit(eukrinikoncmd.Run(os.Args[2:]))
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
