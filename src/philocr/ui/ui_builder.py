@@ -7,13 +7,10 @@ and layouts for the MainWindow.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-else:
-    from collections.abc import Callable
-from typing import Any, NamedTuple
 
 from PyQt6.QtWidgets import (
     QFrame,
@@ -100,6 +97,7 @@ class UIBuilder:
             app_version: Application version
             callbacks: Configuration object containing all UI callbacks
         """
+        super().__init__()
         self.app_name = app_name
         self.app_version = app_version
         self.on_settings_clicked = callbacks.on_settings_clicked

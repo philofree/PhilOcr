@@ -52,9 +52,7 @@ def _levenshtein(a: str, b: str) -> int:
     for i, ca in enumerate(a, 1):
         cur = [i]
         for j, cb in enumerate(b, 1):
-            cur.append(
-                min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb))
-            )
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
         prev = cur
     return prev[-1]
 
@@ -68,8 +66,11 @@ def cer(ocr: str, truth: str) -> tuple[float, float, int, int]:
     return full, base, dist, len(g)
 
 
+_ARGC_WITH_TWO_PATHS = 3
+
+
 def main() -> int:
-    if len(sys.argv) != 3:
+    if len(sys.argv) != _ARGC_WITH_TWO_PATHS:
         print(__doc__)
         return 2
     with open(sys.argv[1], encoding="utf-8") as f:

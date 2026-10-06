@@ -1,0 +1,17 @@
+#!/bin/sh
+# Identity gate. Moved here so it still fires when core.hooksPath is
+# .githooks. The parsimony gate is commit-msg, beside this file.
+set -eu
+REQUIRED_NAME="philofree"
+REQUIRED_EMAIL="252909502+philofree@users.noreply.github.com"
+CURRENT_NAME=$(git config user.name || true)
+CURRENT_EMAIL=$(git config user.email || true)
+if [ "$CURRENT_NAME" != "$REQUIRED_NAME" ]; then
+  echo "ERROR: Git user.name is set to '$CURRENT_NAME' but should be '$REQUIRED_NAME'" >&2
+  exit 1
+fi
+if [ "$CURRENT_EMAIL" != "$REQUIRED_EMAIL" ]; then
+  echo "ERROR: Git user.email is set to '$CURRENT_EMAIL' but should be '$REQUIRED_EMAIL'" >&2
+  exit 1
+fi
+exit 0

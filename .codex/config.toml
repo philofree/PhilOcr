@@ -1,0 +1,9 @@
+# Codex project config (optional). MCP servers are declared here, one
+# [mcp_servers.<name>] table per server. Example:
+#
+# [mcp_servers.example]
+# command = "some-mcp-server"
+# args = ["--stdio"]
+#
+# Hooks live in .codex/hooks.json. On first fire Codex prompts once to trust
+# the project hook (it records a trusted hash in ~/.codex/config.toml).

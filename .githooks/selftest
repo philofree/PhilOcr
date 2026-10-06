@@ -1,0 +1,206 @@
+#!/bin/sh
+# Proves the parsimony gate refuses what it claims to refuse.
+#
+# A gate nobody has watched fail is not known to work — and a gate that
+# refuses everything looks identical to a gate that works, right up until
+# someone tries to pass it. Both directions are tested here.
+#
+# Runs entirely inside a throwaway repo under $TMPDIR. It never reads or
+# writes the real index, so it is safe while another agent is committing.
+#
+#   sh .githooks/selftest        (also runs under `go test ./...`)
+
+set -u
+HOOK=$(CDPATH= cd -- "$(dirname "$0")" && pwd)/commit-msg
+LAB=$(mktemp -d)
+trap 'rm -rf "$LAB"' EXIT INT TERM
+pass=0; fail=0
+
+# One repo, rewound between cases. `git init` costs ~3s of filesystem and
+# security overhead per call on macOS for ~0.05s of actual work, so ten
+# inits is half a minute of nothing — and a slow test is a test someone
+# eventually disables. Init once; rewind per case.
+mkdir -p "$LAB/r"; cd "$LAB/r" || exit 1
+git init -q --template='' .
+git config user.email selftest@example.invalid
+git config user.name selftest
+git config commit.gpgsign false
+awk 'BEGIN{for(i=0;i<200;i++) print "line "i}' > base.go
+git add -A; git commit -qm baseline; git tag baseline
+
+setup() { git reset -q --hard baseline; git clean -qfd; }
+lines() { awk -v n="$1" -v t="$2" 'BEGIN{for(i=0;i<n;i++) print t" "i}'; }
+
+check() {                      # check <name> <REFUSE|PASS> <message>
+  name=$1; want=$2; msg=$3
+  printf '%s' "$msg" > "$LAB/msg"
+  out=$(sh "$HOOK" "$LAB/msg" 2>&1); rc=$?
+  got=REFUSE; [ "$rc" -eq 0 ] && got=PASS
+  if [ "$got" = "$want" ]; then
+    pass=$((pass+1)); printf '  ok    %-52s %s\n' "$name" "$got"
+  else
+    fail=$((fail+1)); printf '  FAIL  %-52s want %s got %s\n' "$name" "$want" "$got"
+    printf '%s\n' "$out" | sed 's/^/        | /'
+  fi
+}
+
+echo
+echo "parsimony gate — self-test"
+echo
+
+# 1. The archetype. "Make these 15,000 lines more efficient" answered with
+#    thousands more: a declared cut whose delta is positive.
+setup
+i=0; while [ $i -lt 10 ]; do lines 254 x > "new$i.go"; i=$((i+1)); done
+lines 71 line > base.go            # 200 -> 71, i.e. 129 deleted
+git add -A
+check "declared cut that grew" REFUSE \
+"Make the store more efficient
+
+Parsimony: cut
+"
+
+# 2. Rot A7: a retirement asserted in prose, not performed.
+setup
+lines 300 y > added.go; git add -A
+check "Retires: claimed but not performed" REFUSE \
+"Collapse the second writer
+
+Parsimony: cut
+Retires: base.go
+"
+
+# 3. The same claim, actually performed.
+setup
+git rm -q base.go; lines 40 y > small.go; git add -A
+check "Retires: performed, net negative" PASS \
+"Collapse the second writer
+
+Parsimony: cut
+Retires: base.go
+"
+
+# 4. Net-additive work that declares nothing.
+setup
+lines 400 z > feature.go; git add -A
+check "undeclared additive change" REFUSE "Add a feature
+"
+
+# 5. Declared add with no hunt. A trailer without Retires: is
+#    accumulation wearing a declaration.
+setup
+lines 400 z > feature.go; git add -A
+check "add without Retires: is not a hunt" REFUSE \
+"Add a feature
+
+Parsimony: add
+"
+
+# 6. Twelve lines of a second path is still a second path. The 50-line
+#    silence is retired.
+setup
+lines 210 line > base.go; git add -A
+check "undeclared small accumulation" REFUSE "Fix an off-by-one
+"
+
+# 7. A genuine reduction passes silently.
+setup
+lines 20 line > base.go; git add -A
+check "genuine reduction, no trailer needed" PASS "Collapse the duplicate walk
+"
+
+# 8. Prose is not code. A large document does not trip the gate.
+setup
+lines 600 w > README_BIG.md; git add -A
+check "documents are measured, never refused" PASS "Write the design note
+"
+
+# 9. Language coverage: the gate is not Go-only.
+setup
+lines 400 p > feature.py; git add -A
+check "non-Go language counted as code" REFUSE "Add a Python module
+"
+
+# 10. A dead measurement must not read as net-zero. If git diff fails, awk
+#     sums nothing and yields "0 0" — PASS. Prove the instrument ran.
+setup
+lines 210 line > base.go; git add -A
+printf 'not-an-index\n' > .git/index
+check "dead measurement is not net-zero" REFUSE "Fix an off-by-one
+"
+rm -f .git/index          # setup's reset rebuilds it
+
+# 11. A merge is not an authored change.
+setup
+lines 400 z > feature.go; git add -A
+check "merge commit exempt" PASS "Merge branch 'x' into main
+"
+
+# 12. The gate must be able to see itself. .githooks/commit-msg carries
+#     no extension, so under the glob-only pathspec this change measured
+#     code +0 and sailed through.
+setup
+mkdir -p .githooks; lines 400 h > .githooks/commit-msg; git add -A
+check "a change to the gate itself is code" REFUSE "Rework the parsimony gate
+"
+
+# 13. A repair of an existing owner, declared, no new file.
+setup
+lines 210 line > base.go; git add -A
+check "declared fix, no new file" PASS \
+"Fix an off-by-one
+
+Parsimony: fix
+"
+
+# 14. Add that hunted: retires a path, still net-positive. The hunt is
+#     the requirement, not net-zero.
+setup
+lines 180 line > base.go
+lines 400 z > feature.go
+git add -A
+check "add with Retires: performed, net-positive" PASS \
+"Add a feature, retire the displaced walk
+
+Parsimony: add
+Retires: base.go
+"
+
+# 15. A fix that mints a new file is an add in costume.
+setup
+lines 40 y > extra.go; git add -A
+check "fix that adds a new file" REFUSE \
+"Fix the parser
+
+Parsimony: fix
+"
+
+# 16. A fourth intent is not a declaration.
+setup
+lines 210 line > base.go; git add -A
+check "unknown Parsimony intent" REFUSE \
+"Tidy some bits
+
+Parsimony: tidy
+"
+
+echo
+# 17. A root commit is exempt: no parent, so nothing it could retire — the
+# state every repository seeded from this template starts in. Its own empty
+# repository, because the shared lab has a baseline commit by construction.
+rootlab="$LAB/rootcase"
+mkdir -p "$rootlab"
+(
+  cd "$rootlab" || exit 1
+  git init -q --template='' . >/dev/null 2>&1
+  git config user.email selftest@example.invalid
+  git config user.name selftest
+  awk 'BEGIN{for(i=0;i<3000;i++) print "line "i}' > seed.go
+  git add -A
+  printf 'seed the repository\n' > msg
+  sh "$HOOK" msg >/dev/null 2>&1
+) && { pass=$((pass+1)); printf '  ok    %-52s %s\n' "root commit exempt (no parent)" PASS; } \
+  || { fail=$((fail+1)); printf '  FAIL  %-52s %s\n' "root commit exempt (no parent)" REFUSE; }
+
+printf '  %d passed, %d failed\n\n' "$pass" "$fail"
+[ "$fail" -eq 0 ] || exit 1

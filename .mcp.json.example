@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "example": {
+      "command": "some-mcp-server",
+      "args": ["--stdio"]
+    }
+  }
+}

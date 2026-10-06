@@ -1,0 +1,194 @@
+#!/bin/sh
+# The parsimony gate — doctrine docs/ROT.md § The parsimony contract.
+#
+# It answers one question about every commit: did this change retire
+# anything, or did it only add? "Make these 15,000 lines more efficient"
+# answered with 5,000 more lines is the failure it exists to refuse.
+#
+# WHY commit-msg AND NOT pre-commit
+#   pre-commit runs before the message exists, so it cannot read the
+#   Parsimony:/Retires: trailers. commit-msg gets both the message and
+#   the staged index.
+#
+# WHY SHELL AND NOT GO
+#   A gate that needs the project to build stops firing exactly when a
+#   refactor breaks the build — fail-open, which is the rot pattern. This
+#   needs git and awk only, and fires on a fresh clone with nothing built.
+#   AGENTS.md § Language law licenses shell for precisely this.
+#
+# WHY THE GIT LAYER
+#   Every agent commits: Claude, Kimi, Codex, ZCode, Cursor, and whatever
+#   comes next. One gate at the git layer binds all of them with no
+#   per-tool registration to drift.
+#
+# ARMING
+#   git config core.hooksPath .githooks
+#   `agentctl init` does this; `agentctl verify` FAILS when it is unset,
+#   because a gate that ships dormant is worse than none — it reads as
+#   protection that is not there.
+#
+# BYPASS
+#   --no-verify skips this hook entirely; the commit message is the trace.
+#
+# PROOF
+#   sh .githooks/selftest        (also runs under `go test ./...`)
+
+set -eu
+MSG_FILE="$1"
+# Any net accumulation must declare itself. The 50-line silence this
+# template kept until the family tightening is retired: a 12-line second
+# path is still a second path.
+
+# A merge or a revert is not an authored change; do not interrogate it.
+[ -e "$(git rev-parse --git-dir)/MERGE_HEAD" ] && exit 0
+grep -qE '^(Merge|Revert) ' "$MSG_FILE" && exit 0
+
+# A root commit has no parent, so there is nothing it could retire: the
+# question this gate asks does not apply to the commit that creates the
+# history. Until this exemption existed, every repository seeded from this
+# template had its own first commit refused (+thousands, nothing to retire)
+# and the only way in was --no-verify, documented nowhere.
+git rev-parse --verify -q HEAD >/dev/null 2>&1 || exit 0
+
+# What counts as code. Prose, config and fixtures are measured separately
+# and never refused: this gate is about implementation growing.
+# The two .githooks files are named LITERALLY because they carry no
+# extension: a glob list alone means a change to this gate reports
+# `code +0` and sails through. A gate blind to itself is the one surface
+# where that blindness compounds.
+set -- '*.go' '*.py' '*.js' '*.jsx' '*.ts' '*.tsx' '*.rs' '*.java' '*.kt' \
+       '*.rb' '*.c' '*.h' '*.cc' '*.cpp' '*.hpp' '*.cs' '*.swift' '*.php' \
+       '*.scala' '*.ex' '*.exs' '*.sh' '*.bash' '*.sql' '*.vue' '*.svelte' \
+       '.githooks/commit-msg' '.githooks/selftest'
+
+# ---- measure the staged change --------------------------------------------
+# Capture git's exit status separately. Piping straight into awk hides it:
+# a failed git diff emits nothing, awk sums nothing, and "0 0" comes out —
+# net zero, PASS. A gate that reports clean when its own instrument died
+# is fail-open, which is the rot pattern it exists to refuse.
+#
+# Do NOT set pipefail globally: sed|head, and grep -v over an empty Retires
+# block, are lawful zeros rather than instrument death.
+numstat=$(git diff --cached --numstat -- "$@") || {
+  echo "parsimony: git diff --cached --numstat failed — refusing to report a clean zero" >&2
+  exit 1
+}
+stat_line=$(printf '%s\n' "$numstat" | awk '$1 != "-" {a += $1; d += $2} END {printf "%d %d", a+0, d+0}')
+added=${stat_line% *}; deleted=${stat_line#* }
+net=$((added - deleted))
+
+added_names=$(git diff --cached --name-only --diff-filter=A -- "$@") || {
+  echo "parsimony: git diff --cached --name-only failed" >&2
+  exit 1
+}
+newfiles=0
+if [ -n "$added_names" ]; then
+  newfiles=$(printf '%s\n' "$added_names" | wc -l | tr -d ' ')
+fi
+
+docstat=$(git diff --cached --numstat -- '*.md' '*.mdc' '*.yaml' '*.yml') || {
+  echo "parsimony: git diff --cached --numstat (docs) failed" >&2
+  exit 1
+}
+docs_line=$(printf '%s\n' "$docstat" | awk '$1 != "-" {a += $1; d += $2} END {printf "%d %d", a+0, d+0}')
+d_add=${docs_line% *}; d_del=${docs_line#* }
+
+# ---- read the contract off the message ------------------------------------
+# Trailers are the last block. Reading Parsimony:/Retires: from the whole
+# message is how a gate refuses a commit that declared nothing: a message
+# ABOUT the contract wraps so `Retires:` begins a line, and the rest of
+# that sentence is reported as a path list. git's own convention is that
+# trailers are the final paragraph.
+trailers=$(awk 'BEGIN{RS=""} {last=$0} END{print last}' "$MSG_FILE")
+intent=$(printf '%s\n' "$trailers" | sed -n 's/^Parsimony:[[:space:]]*\([a-z]*\).*/\1/p' | head -1)
+retires=$(printf '%s\n' "$trailers" | sed -n '/^Retires:/,/^[A-Z][A-Za-z-]*:/p' \
+  | sed 's/^Retires:[[:space:]]*//' \
+  | grep -v '^[A-Z][A-Za-z-]*:' | awk 'NF {print $1}')
+
+report() {
+  printf '\nparsimony: code %+d  (+%d / -%d)' "$net" "$added" "$deleted"
+  [ "$newfiles" -gt 0 ] && printf '   %s new file(s)' "$newfiles"
+  [ $((d_add + d_del)) -gt 0 ] && printf '   docs %+d' $((d_add - d_del))
+  printf '\n'
+}
+refuse() {
+  report
+  printf '\nparsimony: REFUSED — %s\n\n' "$1"
+  shift; for l in "$@"; do printf '  %s\n' "$l"; done
+  printf '\n  docs/ROT.md § The parsimony contract\n'
+  printf '  override: git commit --no-verify   (the commit message is the trace)\n\n'
+  exit 1
+}
+
+# ---- 1. a declared cut that grew is always refused -------------------------
+if [ "$intent" = "cut" ] && [ "$net" -gt 0 ]; then
+  refuse "this commit declares 'Parsimony: cut' but adds $net more lines of code than it removes." \
+    "A reductive change with a positive line delta has liquefied the" \
+    "ground it was sent to firm. Either retire the paths it displaced," \
+    "or declare what this really is (Parsimony: add) and say why."
+fi
+
+# ---- 2. a retirement claimed must actually be performed --------------------
+if [ -n "$retires" ]; then
+  unmet=""
+  for path in $retires; do
+    p=$(printf '%s' "$path" | sed 's/[`,]//g')
+    [ -z "$p" ] && continue
+    case "$p" in \#*) continue ;; esac
+    # NB: `>` inside print is redirection in awk, not comparison. It must
+    # sit inside an if, or this check throws and fails closed.
+    status=$(git diff --cached --numstat -- "$p" 2>/dev/null \
+      | awk '$1 != "-" {a += $1; d += $2} END {if (d+0 > a+0) print "shrunk"; else print "no"}')
+    [ "$status" = "shrunk" ] || unmet="$unmet $p"
+  done
+  if [ -n "$unmet" ]; then
+    refuse "Retires: names path(s) this diff does not delete or shrink." \
+      "claimed but not performed:$unmet" \
+      "" \
+      "This is rot A7: the retirement asserted in prose while the thing" \
+      "retired still compiles. Either delete it in this commit, or take" \
+      "it off the Retires: list."
+  fi
+fi
+
+# ---- 3. unknown intent is not a declaration --------------------------------
+case "$intent" in
+  ""|cut|add|fix) ;;
+  *) refuse "Parsimony: $intent is not cut, add, or fix." \
+       "The three intents are the contract. A fourth is a hole an agent" \
+       "walks through while claiming to have declared." ;;
+esac
+
+# ---- 4. net-additive work must say what it is ------------------------------
+if [ "$net" -gt 0 ] && [ -z "$intent" ]; then
+  refuse "this commit adds $net lines of code and retires nothing, without declaring itself." \
+    "Add one trailer to the commit message:" \
+    "" \
+    "  Parsimony: add          net-new capability; MUST name Retires: what it made redundant" \
+    "  Parsimony: fix          a repair of an existing owner — no new files" \
+    "  Parsimony: cut          a reduction — then it must be net-negative," \
+    "  Retires: <path>         and every path here must shrink in this diff" \
+    "" \
+    "Declaring is the cheapest act available. The gate is not asking you" \
+    "to write less; it is asking you to say what you did, and to hunt" \
+    "what the new code made redundant."
+fi
+
+# ---- 5. add must hunt what it made redundant -------------------------------
+if [ "$intent" = "add" ] && [ -z "$retires" ]; then
+  refuse "this commit declares Parsimony: add but names nothing in Retires:." \
+    "New code makes something redundant. Hunt it and delete it in this" \
+    "commit — a declaration with no retirement is accumulation wearing" \
+    "a trailer. If nothing is redundant, this is a fix of an existing" \
+    "owner (Parsimony: fix, no new files), not an add."
+fi
+
+# ---- 6. a fix does not mint a new file -------------------------------------
+if [ "$intent" = "fix" ] && [ "$newfiles" -gt 0 ]; then
+  refuse "this commit declares Parsimony: fix but adds $newfiles new file(s)." \
+    "A fix repairs an existing owner. A new file is a new path. Declare" \
+    "Parsimony: add and Retires: what the new file displaced."
+fi
+
+report
+exit 0
