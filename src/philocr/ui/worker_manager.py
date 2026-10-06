@@ -8,8 +8,6 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from PyQt6.QtCore import QTimer
-
 if TYPE_CHECKING:
     from PyQt6.QtWidgets import QProgressBar
 
@@ -255,9 +253,3 @@ class WorkerManager:
         self.progress_bar.setVisible(False)
         if self.stage_progress_widget:
             self.stage_progress_widget.setVisible(False)
-
-        # Schedule cleanup of old temporary files
-        if self.temp_cleaner:
-            _ = QTimer.singleShot(
-                2000, lambda: self.temp_cleaner.clean_old_temp_files(24)
-            )

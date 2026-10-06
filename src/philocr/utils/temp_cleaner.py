@@ -2,8 +2,6 @@
 """Temporary file cleaner for managing temporary files during processing."""
 from __future__ import annotations
 
-import datetime
-import glob
 import os
 import tempfile
 from typing import TYPE_CHECKING
@@ -86,56 +84,5 @@ class TempFileCleaner:
             "temp_files_cleaned_summary",
             cleaned_count=cleaned_count,
             failed_count=failed_count,
-        )
-        return cleaned_count, failed_count
-
-    def clean_old_temp_files(self, age_hours: int = 24) -> tuple[int, int]:
-        """
-        Clean temporary files older than the specified age.
-
-        Args:
-            age_hours (int): Age in hours to consider files old
-
-        Returns:
-            Tuple[int, int]: (number of files cleaned, number of files that failed to clean)
-        """
-        pattern: str = os.path.join(self.temp_dir, "tmp*pdf")
-        now: datetime.datetime = datetime.datetime.now()
-        cleaned_count: int = 0
-        failed_count: int = 0
-
-        for file_path in glob.glob(pattern):
-            try:
-                file_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                age = now - file_time
-
-                if age.total_seconds() > age_hours * 3600:
-                    os.unlink(file_path)
-                    logger.debug(
-                        "old_temp_file_cleaned",
-                        file_path=file_path,
-                        age_hours=age_hours,
-                    )
-                    cleaned_count += 1
-            except Exception as e:
-                logger.error(
-                    "old_temp_file_clean_failed",
-                    file_path=file_path,
-                    error=str(e),
-                    error_type=type(e).__name__,
-                    exc_info=True,
-                )
-                from philocr.utils.logging_config import flush_loggers
-
-                flush_loggers()
-                raise RuntimeError(
-                    f"CRITICAL: Old temp file clean failed for {file_path} - {e}"
-                ) from e
-
-        logger.info(
-            "old_temp_files_cleaned_summary",
-            cleaned_count=cleaned_count,
-            failed_count=failed_count,
-            age_hours=age_hours,
         )
         return cleaned_count, failed_count

@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 )
 
 from philocr.ui.tab_factory import TabFactory
+from philocr.ui.theme import style_scan_save_button, style_scan_send_button
 from philocr.ui.widget_factory import WidgetFactory
 
 
@@ -155,9 +156,7 @@ class UIBuilder:
         """
         button_configs = [
             ButtonConfig("select", "Select PDF", self.on_select_file, max_width=200),
-            ButtonConfig(
-                "batch", "Batch Process", self.on_batch_files, max_width=200
-            ),
+            ButtonConfig("batch", "Batch Process", self.on_batch_files, max_width=200),
             ButtonConfig("load_json", "Load JSON", self.on_load_json, max_width=200),
             ButtonConfig("save", "Save Text", self.on_save_text, False, max_width=200),
             ButtonConfig(
@@ -167,8 +166,12 @@ class UIBuilder:
                 False,
                 max_width=200,
             ),
-            ButtonConfig("save_json", "Save JSON", self.on_save_json, False, max_width=200),
-            ButtonConfig("save_html", "Save HTML", self.on_save_html, False, max_width=200),
+            ButtonConfig(
+                "save_json", "Save JSON", self.on_save_json, False, max_width=200
+            ),
+            ButtonConfig(
+                "save_html", "Save HTML", self.on_save_html, False, max_width=200
+            ),
             ButtonConfig("clear", "Clear", self.on_clear, max_width=200),
             ButtonConfig(
                 "debug_md",
@@ -204,10 +207,7 @@ class UIBuilder:
             min_height=36,
         )
         save_scan_area_button.setFont(button_font)
-        save_scan_area_button.setStyleSheet(
-            "QPushButton { background-color: #E6F0FF; }"
-            "QPushButton:hover { background-color: #CCE0FF; }"
-        )
+        save_scan_area_button.setStyleSheet(style_scan_save_button())
         button_layout.addWidget(save_scan_area_button)
         buttons["save_scan_areas"] = save_scan_area_button
 
@@ -222,10 +222,7 @@ class UIBuilder:
             min_height=36,
         )
         process_scan_area_button.setFont(button_font)
-        process_scan_area_button.setStyleSheet(
-            "QPushButton { background-color: #E6FFE6; }"
-            "QPushButton:hover { background-color: #CCFFCC; }"
-        )
+        process_scan_area_button.setStyleSheet(style_scan_send_button())
         button_layout.addWidget(process_scan_area_button)
         buttons["process_scan_areas"] = process_scan_area_button
 

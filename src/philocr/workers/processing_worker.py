@@ -11,6 +11,10 @@ from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from philocr.models.scan_area import (
+    scan_areas_path_for_pdf,
+    try_load_scan_areas_for_pdf,
+)
 from philocr.processing.document_ai import (
     MAX_REQUESTS_PER_MINUTE,
     RATE_LIMIT_SECONDS,
@@ -85,6 +89,32 @@ class ProcessingWorker(QThread):
         )
         self.result_processor = ResultProcessor()
         self.temp_file_manager = temp_file_manager
+
+    def _resolve_manual_scan_areas(self, file_path: str) -> Any | None:
+        """Resolve manual scan areas for a PDF file.
+
+        Uses in-memory areas from the UI when provided; otherwise loads the
+        sibling ``.scan_areas.json`` file if it exists.
+
+        Args:
+            file_path: Path to the PDF file being processed
+
+        Returns:
+            ManualScanAreas when available, otherwise None
+        """
+        if self.manual_scan_areas is not None:
+            return self.manual_scan_areas
+
+        scan_areas_path = scan_areas_path_for_pdf(file_path)
+        loaded = try_load_scan_areas_for_pdf(file_path)
+        if loaded is not None:
+            logger.info(
+                "scan_areas_loaded_from_disk",
+                file_path=file_path,
+                path=str(scan_areas_path),
+                page_count=len(loaded.areas),
+            )
+        return loaded
 
     def set_batch_mode(self, file_paths: list[str]) -> None:
         """Set up for batch processing.
@@ -278,8 +308,11 @@ class ProcessingWorker(QThread):
             )
 
             # Process file
+            manual_scan_areas = self._resolve_manual_scan_areas(self.file_path)
             extracted_text, document_json = pipeline_handler.process_single_file(
-                self.file_path, file_name, manual_scan_areas=self.manual_scan_areas
+                self.file_path,
+                file_name,
+                manual_scan_areas=manual_scan_areas,
             )
 
             if extracted_text:
@@ -342,8 +375,11 @@ class ProcessingWorker(QThread):
                 )
 
                 try:
+                    manual_scan_areas = self._resolve_manual_scan_areas(file_path)
                     file_text, file_json = pipeline_handler.process_single_file(
-                        file_path, file_name, manual_scan_areas=self.manual_scan_areas
+                        file_path,
+                        file_name,
+                        manual_scan_areas=manual_scan_areas,
                     )
 
                     all_text += f"\n\n--- Document {i+1}: {file_name} ---\n\n"

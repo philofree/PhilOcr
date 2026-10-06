@@ -125,7 +125,7 @@ class ScanAreaManager:
         )
 
     def on_process_requested(
-        self, scan_areas: Any, pdf_path: str  # ManualScanAreas
+        self, scan_areas: Any, _pdf_path: str  # ManualScanAreas
     ) -> None:
         """Handle process requested signal.
 
@@ -138,11 +138,14 @@ class ScanAreaManager:
         """
         processing_mode = self.get_processing_mode()
 
-        # Only use manual scan areas in Manual Scan Area mode
-        if processing_mode == "advanced_pipeline":
-            self.on_status_update("Starting processing with saved scan areas...")
-        else:
-            self.on_status_update("Starting standard OCR processing...")
+        if processing_mode != "advanced_pipeline":
+            self.on_error(
+                "Scan areas require Advanced Pipeline mode. "
+                "Select 'Advanced Pipeline' above, then click 'Send Scan Areas' again."
+            )
+            return
+
+        self.on_status_update("Starting processing with saved scan areas...")
 
         # Start processing
         current_pdf_path = self.get_current_pdf_path()
@@ -150,9 +153,7 @@ class ScanAreaManager:
             self.worker_manager.start_single_file_processing(
                 current_pdf_path,
                 processing_mode=processing_mode,
-                manual_scan_areas=(
-                    scan_areas if processing_mode == "advanced_pipeline" else None
-                ),
+                manual_scan_areas=scan_areas,
             )
         else:
             self.on_error("No PDF file selected. Please select a PDF first.")

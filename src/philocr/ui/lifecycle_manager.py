@@ -51,14 +51,6 @@ class LifecycleManager:
         if cleaned > 0:
             self.on_status_update(f"Cleaned {cleaned} temporary files")
 
-        old_cleaned, _old_failed = self.temp_cleaner.clean_old_temp_files(24)
-        if old_cleaned > 0:
-            logger.info(
-                "temp_files_cleaned_old",
-                files_cleaned=old_cleaned,
-                age_hours=24,
-            )
-
     def on_window_close(self, event: QCloseEvent) -> None:
         """Handle window close event and clean up resources.
 
@@ -69,13 +61,5 @@ class LifecycleManager:
             cleaned, _failed = self.temp_cleaner.clean_registered_files()
             if cleaned > 0:
                 logger.info("temp_files_cleaned_on_exit", files_cleaned=cleaned)
-
-            old_cleaned, _old_failed = self.temp_cleaner.clean_old_temp_files(24)
-            if old_cleaned > 0:
-                logger.info(
-                    "temp_files_cleaned_old_on_exit",
-                    files_cleaned=old_cleaned,
-                    age_hours=24,
-                )
 
         event.accept()

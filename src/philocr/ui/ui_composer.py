@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from philocr.ui.theme import style_primary_label
 from philocr.ui.ui_builder import UIBuilder, UICallbacks
 from philocr.ui.widgets.stage_progress import StageProgressWidget
 
@@ -156,9 +157,7 @@ Note:
         self._setup_header(left_panel_layout)
         # Add spacing before mode selector
         left_panel_layout.addSpacing(15)
-        mode_selector_widget, mode_radios = self._setup_mode_selector(
-            left_panel_layout
-        )
+        mode_selector_widget, mode_radios = self._setup_mode_selector(left_panel_layout)
         buttons = self._setup_buttons(left_panel_layout)
         left_panel_layout.addStretch()
 
@@ -290,7 +289,9 @@ Note:
 
     def _setup_tabs_and_status(
         self, right_panel_layout: QVBoxLayout
-    ) -> tuple[dict[str, QWidget | QProgressBar | QTabWidget | QTextEdit | None], QLabel]:
+    ) -> tuple[
+        dict[str, QWidget | QProgressBar | QTabWidget | QTextEdit | None], QLabel
+    ]:
         """Set up tab widget with status above.
 
         Args:
@@ -306,7 +307,7 @@ Note:
         # Create compact status label
         status_text = QLabel("PhilOcr v3.0")
         status_text.setFont(QFont("Gentium", 12))
-        status_text.setStyleSheet("color: #1e3a6e; padding: 2px 10px;")
+        status_text.setStyleSheet(style_primary_label("padding: 2px 10px;"))
         status_text.setMaximumHeight(24)
 
         # Add status above tabs

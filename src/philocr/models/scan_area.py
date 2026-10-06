@@ -71,6 +71,30 @@ class ManualScanArea:
             bottom_left=corners[3],
         )
 
+    def with_corners(self, corners: list[tuple[int, int]]) -> ManualScanArea:
+        """Return a copy with updated corners, preserving masks and breaks.
+
+        Args:
+            corners: List of 4 (x, y) tuples in order:
+                    [top_left, top_right, bottom_right, bottom_left]
+
+        Returns:
+            ManualScanArea with new corners and existing mask/break metadata
+        """
+        if len(corners) != NUM_SCAN_AREA_CORNERS:
+            raise ValueError(
+                f"Must provide exactly {NUM_SCAN_AREA_CORNERS} corner points"
+            )
+        return ManualScanArea(
+            top_left=corners[0],
+            top_right=corners[1],
+            bottom_right=corners[2],
+            bottom_left=corners[3],
+            mask_rects=self.mask_rects,
+            line_breaks=self.line_breaks,
+            paragraph_breaks=self.paragraph_breaks,
+        )
+
     @classmethod
     def create_default(cls, page_width: int, page_height: int) -> ManualScanArea:
         """Create default centered rectangle (60% of page size).
@@ -133,6 +157,33 @@ class ManualScanAreas:
             True if scan area exists for this page
         """
         return page_num in self.areas
+
+
+def scan_areas_path_for_pdf(pdf_path: str | Path) -> Path:
+    """Return the canonical scan-areas JSON path for a PDF.
+
+    Args:
+        pdf_path: Path to the source PDF file
+
+    Returns:
+        Path to the sibling ``.scan_areas.json`` file
+    """
+    return Path(pdf_path).with_suffix(".scan_areas.json")
+
+
+def try_load_scan_areas_for_pdf(pdf_path: str | Path) -> ManualScanAreas | None:
+    """Load scan areas from the PDF sibling JSON file if it exists.
+
+    Args:
+        pdf_path: Path to the source PDF file
+
+    Returns:
+        Loaded ManualScanAreas, or None if no sidecar file exists
+    """
+    scan_areas_path = scan_areas_path_for_pdf(pdf_path)
+    if not scan_areas_path.exists():
+        return None
+    return load_scan_areas(scan_areas_path)
 
 
 def save_scan_areas(scan_areas: ManualScanAreas, file_path: str | Path) -> None:

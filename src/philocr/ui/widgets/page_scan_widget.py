@@ -265,14 +265,14 @@ class PageScanAreaWidget(QWidget):
             True if point is inside the rectangle
         """
         corners = self._get_corner_positions()
-        
+
         # Simple rectangle check (works for non-rotated rectangles)
         # Get bounding box
         min_x = min(c.x() for c in corners)
         max_x = max(c.x() for c in corners)
         min_y = min(c.y() for c in corners)
         max_y = max(c.y() for c in corners)
-        
+
         return min_x <= pos.x() <= max_x and min_y <= pos.y() <= max_y
 
     def _hit_test(self, pos: QPoint) -> str | None:
@@ -315,14 +315,14 @@ class PageScanAreaWidget(QWidget):
             # Right-click inserts paragraph break
             pos = event.position().toPoint()
             _, y_img = self._display_to_image(pos.x(), pos.y())
-            
+
             if self.scan_area.paragraph_breaks is None:
                 self.scan_area.paragraph_breaks = []
-            
+
             # Add paragraph break (sorted for easier processing)
             self.scan_area.paragraph_breaks.append(y_img)
             self.scan_area.paragraph_breaks.sort()
-            
+
             self.scan_area_changed.emit(self.page_num, self.scan_area)
             self.update()
         elif event.button() == Qt.MouseButton.LeftButton:
@@ -330,14 +330,14 @@ class PageScanAreaWidget(QWidget):
                 # Insert line break at click position
                 pos = event.position().toPoint()
                 _, y_img = self._display_to_image(pos.x(), pos.y())
-                
+
                 if self.scan_area.line_breaks is None:
                     self.scan_area.line_breaks = []
-                
+
                 # Add line break (sorted for easier processing)
                 self.scan_area.line_breaks.append(y_img)
                 self.scan_area.line_breaks.sort()
-                
+
                 self.scan_area_changed.emit(self.page_num, self.scan_area)
                 self.update()
             elif self.mask_mode:
@@ -359,19 +359,21 @@ class PageScanAreaWidget(QWidget):
         """Handle double-click to delete a mask rectangle, line break, or paragraph break."""
         if event.button() == Qt.MouseButton.LeftButton:
             pos = event.position().toPoint()
-            
+
             # Check for paragraph break deletion first (thicker, higher priority)
             if self.scan_area.paragraph_breaks:
                 _, y_img = self._display_to_image(pos.x(), pos.y())
                 for i, pb_y in enumerate(self.scan_area.paragraph_breaks):
-                    if abs(pb_y - y_img) <= 7 / self.scale_y:  # Larger hit area for thicker line
+                    if (
+                        abs(pb_y - y_img) <= 7 / self.scale_y
+                    ):  # Larger hit area for thicker line
                         del self.scan_area.paragraph_breaks[i]
                         if not self.scan_area.paragraph_breaks:
                             self.scan_area.paragraph_breaks = None
                         self.scan_area_changed.emit(self.page_num, self.scan_area)
                         self.update()
                         return
-            
+
             # Check for line break deletion
             if self.scan_area.line_breaks:
                 _, y_img = self._display_to_image(pos.x(), pos.y())
@@ -384,7 +386,7 @@ class PageScanAreaWidget(QWidget):
                         self.scan_area_changed.emit(self.page_num, self.scan_area)
                         self.update()
                         return
-            
+
             # Check for mask deletion
             mask_index = self._hit_test_masks(pos)
             if mask_index is not None:
@@ -473,30 +475,27 @@ class PageScanAreaWidget(QWidget):
                     max(0, min(self.original_height, y)),
                 )
 
-            # Update scan area
-            self.scan_area = ManualScanArea.from_list(corners)
+            # Update scan area (preserve masks and manual break markers)
+            self.scan_area = self.scan_area.with_corners(corners)
             self.scan_area_changed.emit(self.page_num, self.scan_area)
             self.update()
+        # Hover feedback
+        elif self.line_break_mode or self.mask_mode:
+            self.setCursor(Qt.CursorShape.CrossCursor)
         else:
-            # Hover feedback
-            if self.line_break_mode:
-                self.setCursor(Qt.CursorShape.CrossCursor)
-            elif self.mask_mode:
-                self.setCursor(Qt.CursorShape.CrossCursor)
+            # Check if hovering over a mask (for deletion)
+            mask_index = self._hit_test_masks(pos)
+            if mask_index is not None:
+                self.setCursor(Qt.CursorShape.PointingHandCursor)
             else:
-                # Check if hovering over a mask (for deletion)
-                mask_index = self._hit_test_masks(pos)
-                if mask_index is not None:
-                    self.setCursor(Qt.CursorShape.PointingHandCursor)
-                else:
-                    target = self._hit_test(pos)
-                    if target:
-                        if target == "body":
-                            self.setCursor(Qt.CursorShape.SizeAllCursor)
-                        else:
-                            self.setCursor(Qt.CursorShape.PointingHandCursor)
+                target = self._hit_test(pos)
+                if target:
+                    if target == "body":
+                        self.setCursor(Qt.CursorShape.SizeAllCursor)
                     else:
-                        self.setCursor(Qt.CursorShape.ArrowCursor)
+                        self.setCursor(Qt.CursorShape.PointingHandCursor)
+                else:
+                    self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def mouseReleaseEvent(self, event) -> None:
         """Handle mouse release to end drag or finish mask drawing."""
@@ -504,26 +503,26 @@ class PageScanAreaWidget(QWidget):
             if self.drawing_mask and self.current_mask_start:
                 # Finish drawing mask rectangle
                 end_pos = event.position().toPoint()
-                
+
                 # Convert to image coordinates
                 x1, y1 = self._display_to_image(
                     self.current_mask_start.x(), self.current_mask_start.y()
                 )
                 x2, y2 = self._display_to_image(end_pos.x(), end_pos.y())
-                
+
                 # Calculate rectangle (x, y, width, height)
                 x = min(x1, x2)
                 y = min(y1, y2)
                 width = abs(x2 - x1)
                 height = abs(y2 - y1)
-                
+
                 # Only add if rectangle has size
                 if width > 5 and height > 5:
                     if self.scan_area.mask_rects is None:
                         self.scan_area.mask_rects = []
                     self.scan_area.mask_rects.append((x, y, width, height))
                     self.scan_area_changed.emit(self.page_num, self.scan_area)
-                
+
                 self.drawing_mask = False
                 self.current_mask_start = None
                 self.current_mask_end = None

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 # Image dimensions
 RGB_DIMS = 3
 
@@ -23,9 +21,14 @@ from philocr.models.scan_area import (
     ManualScanAreas,
     load_scan_areas,
     save_scan_areas,
+    scan_areas_path_for_pdf,
 )
 from philocr.pipeline.utils.pdf_render import render_pdf_page
+from philocr.ui.theme import style_primary_label
 from philocr.ui.widgets.page_scan_widget import PageScanAreaWidget
+from philocr.utils.logging_config import flush_loggers, get_logger
+
+logger = get_logger(__name__)
 
 
 class ScanAreaViewerWidget(QWidget):
@@ -93,15 +96,16 @@ class ScanAreaViewerWidget(QWidget):
 
     def _load_existing_scan_areas(self) -> None:
         """Load existing scan areas from JSON file if it exists."""
-        scan_areas_path = Path(self.pdf_path).with_suffix(".scan_areas.json")
+        scan_areas_path = scan_areas_path_for_pdf(self.pdf_path)
         if scan_areas_path.exists():
             try:
                 self.scan_areas = load_scan_areas(scan_areas_path)
+                logger.info(
+                    "scan_areas_loaded",
+                    path=str(scan_areas_path),
+                    page_count=len(self.scan_areas.areas),
+                )
             except Exception as e:
-                # If loading fails, start with empty scan areas
-                from philocr.utils.logging_config import get_logger
-
-                logger = get_logger(__name__)
                 logger.warning(
                     "scan_areas_load_failed",
                     path=str(scan_areas_path),
@@ -155,7 +159,7 @@ class ScanAreaViewerWidget(QWidget):
                 header_layout.setSpacing(10)
 
                 page_label = QLabel(f"Page {page_num + 1}")
-                page_label.setStyleSheet("font-size: 12pt; color: #1e3a6e;")
+                page_label.setStyleSheet(style_primary_label("font-size: 12pt;"))
                 header_layout.addStretch()
                 header_layout.addWidget(page_label)
 
@@ -243,10 +247,6 @@ class ScanAreaViewerWidget(QWidget):
                 self.scan_areas.set(page_num, page_widget.get_scan_area())
 
             except Exception as e:
-                # Log error but continue with other pages
-                from philocr.utils.logging_config import get_logger
-
-                logger = get_logger(__name__)
                 logger.error(
                     "page_load_failed",
                     page_num=page_num,
@@ -311,13 +311,16 @@ class ScanAreaViewerWidget(QWidget):
         for page_num, widget in self.page_widgets.items():
             self.scan_areas.set(page_num, widget.get_scan_area())
 
-        # Save to file
-        scan_areas_path = Path(self.pdf_path).with_suffix(".scan_areas.json")
+        scan_areas_path = scan_areas_path_for_pdf(self.pdf_path)
         try:
             save_scan_areas(self.scan_areas, scan_areas_path)
+            logger.info(
+                "scan_areas_saved",
+                path=str(scan_areas_path),
+                page_count=len(self.scan_areas.areas),
+            )
             self.scan_areas_saved.emit(self.scan_areas)
 
-            # Show success message
             from PyQt6.QtWidgets import QMessageBox
 
             _ = QMessageBox.information(
@@ -326,9 +329,6 @@ class ScanAreaViewerWidget(QWidget):
                 f"Scan areas saved to:\n{scan_areas_path}",
             )
         except Exception as e:
-            from philocr.utils.logging_config import get_logger
-
-            logger = get_logger(__name__)
             logger.error(
                 "scan_areas_save_failed",
                 path=str(scan_areas_path),
@@ -336,18 +336,15 @@ class ScanAreaViewerWidget(QWidget):
                 error_type=type(e).__name__,
                 exc_info=True,
             )
+            flush_loggers()
 
             from PyQt6.QtWidgets import QMessageBox
 
-            from philocr.utils.logging_config import flush_loggers
-
-            flush_loggers()
             _ = QMessageBox.critical(
                 self,
                 "Save Error",
                 f"Failed to save scan areas:\n{e}",
             )
-            raise RuntimeError(f"CRITICAL: Scan areas save failed - {e}") from e
 
     def process_scan_areas(self) -> None:
         """Process scan areas.
@@ -356,15 +353,16 @@ class ScanAreaViewerWidget(QWidget):
         """
         # Ensure scan areas are saved first
         scan_areas = self.get_scan_areas()
-        scan_areas_path = Path(self.pdf_path).with_suffix(".scan_areas.json")
+        scan_areas_path = scan_areas_path_for_pdf(self.pdf_path)
 
-        # Save to file if not already saved
         try:
             save_scan_areas(scan_areas, scan_areas_path)
+            logger.info(
+                "scan_areas_saved_before_process",
+                path=str(scan_areas_path),
+                page_count=len(scan_areas.areas),
+            )
         except Exception as e:
-            from philocr.utils.logging_config import get_logger
-
-            logger = get_logger(__name__)
             logger.error(
                 "scan_areas_save_failed_before_process",
                 path=str(scan_areas_path),
@@ -372,20 +370,16 @@ class ScanAreaViewerWidget(QWidget):
                 error_type=type(e).__name__,
                 exc_info=True,
             )
+            flush_loggers()
 
             from PyQt6.QtWidgets import QMessageBox
 
-            from philocr.utils.logging_config import flush_loggers
-
-            flush_loggers()
             _ = QMessageBox.critical(
                 self,
                 "Save Error",
                 f"Failed to save scan areas before processing:\n{e}",
             )
-            raise RuntimeError(
-                f"CRITICAL: Scan areas save failed before process - {e}"
-            ) from e
+            return
 
         # Emit process signal
         self.process_requested.emit(scan_areas)

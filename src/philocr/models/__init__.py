@@ -18,6 +18,8 @@ from philocr.models.scan_area import (
     ManualScanAreas,
     load_scan_areas,
     save_scan_areas,
+    scan_areas_path_for_pdf,
+    try_load_scan_areas_for_pdf,
 )
 from philocr.models.template import DocumentTemplate
 
@@ -44,4 +46,6 @@ __all__ = [
     "ManualScanAreas",
     "load_scan_areas",
     "save_scan_areas",
+    "scan_areas_path_for_pdf",
+    "try_load_scan_areas_for_pdf",
 ]

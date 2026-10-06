@@ -8,6 +8,10 @@ PhilOcr takes a different approach. It uses Google Document AI — a neural OCR 
 
 The output is clean, structured, Unicode-normalized Greek text ready for downstream processing — or for a corpus like [Eulogikon](https://eulogikon.org).
 
+![PhilOcr: scan-area selection on page 1 of von Arnim's SVF. The body text is enclosed in the green selection; the Latin section heading and the critical apparatus are masked out (red); marginal line numbers are retained.](docs/images/scan-area-selection.png)
+
+*Page 1 of von Arnim's* Stoicorum Veterum Fragmenta *(1903). The body text is selected; the Latin heading and critical apparatus are masked out; the marginal line numbers are kept. The result, measured against a hand-checked reference, is a **1.08% character error rate** — see [`samples/`](samples/).*
+
 ## Why This Exists
 
 The Perseus Digital Library and First1KGreek have done heroic work digitizing ancient texts. But their coverage has gaps, their sources are sometimes older transcriptions, and the long tail of scholarly editions — the ones with the best critical apparatus, the most reliable text — remains largely undigitized.
@@ -22,7 +26,15 @@ Most Greek OCR tools stop at character recognition. PhilOcr goes further:
 
 **Structure-aware parsing.** The academic document parser identifies structural elements by their position on the page — line numbers sit in the left margin at predictable x-coordinates, footnotes cluster at the bottom with distinct formatting, headers are typically all-caps. These elements are categorized and preserved in the output, not flattened into a stream of characters.
 
-**Precise scan control.** A visual scan-area editor lets you draw an exact 4-corner polygon around the text block on each page — not just a bounding box — and whiteout-mask anything inside it you want excluded (folio marks, marginalia, library stamps). Essential for skewed scans where rectangular cropping pulls in the margins.
+**The scholar guides the page.** This is the core idea, and it's a deliberate departure from fully-automatic OCR. The hardest, most error-prone decisions in any OCR pipeline are not character recognition — modern neural engines are excellent at that — but *segmentation*: what is body text, what is apparatus, where lines and paragraphs begin and end. A merged or mis-split line silently corrupts everything downstream and never shows up in an accuracy score. So PhilOcr hands those decisions back to the person already looking at the page, through three escalating controls:
+
+1. **Quadrilateral selection** — draw an exact 4-corner polygon around the text block (not just a bounding box), so skewed scans don't drag in the margins.
+2. **Whiteout masks** — paint out anything inside the selection the OCR must never see: critical apparatus, folio marks, library stamps, running heads.
+3. **Line and paragraph definition** — draw the line boundaries directly on the page and set paragraph breaks, supplying the segmentation the engine would otherwise have to guess.
+
+Seconds per page of human judgment, and the engine is left with the one task it now does superbly: reading characters inside a clean, well-defined region. The high accuracy isn't *despite* the manual steps — it's largely *because* of them.
+
+**Non-destructive by design.** Your selections, masks, and line breaks are saved as a JSON sidecar (`.scan_areas.json`) next to the PDF — the scan itself is never modified. A single toggle (Standard OCR / Manual Scan Area) switches the whole layer off and processes the full page instead. So one document yields two products on demand: the clean body text for a corpus, or the complete page with apparatus when you want everything. The apparatus is deferred, never discarded.
 
 **Scale without pain.** A 2,000-page critical edition is a different beast from a 50-page fragment. PhilOcr automatically selects the right processing strategy: direct for small files under 50MB, chunked for 50–200MB, and streaming via `ijson` for anything larger. No manual configuration needed.
 
@@ -42,6 +54,19 @@ The application is a four-stage pipeline behind a PyQt6 desktop interface:
 | 4 Assemble | Raw result → clean Greek text with document structure |
 
 Each stage owns exactly one transformation; typed model objects flow between them. The result is reproducible and debuggable — when output is wrong, you can see which stage broke.
+
+## Accuracy
+
+On a sample page of von Arnim's *SVF* (1903) — running polytonic Greek from a dense 19th-century Teubner — PhilOcr's output scores against a hand-checked reference text as follows:
+
+| Source | Character Error Rate |
+|--------|---------------------|
+| Legacy / uncorrected text layer | ~13% |
+| **PhilOcr (this pipeline)** | **~1%** |
+
+That ~1% puts it in the same tier as purpose-built academic research systems for this script (e.g. published CRNN pipelines report ~1.05–1.18% CER) — but without training a model or preparing ground truth. The benchmark is fully reproducible: see [`samples/`](samples/) for the page, the OCR output, the reference text, and a standalone script (`python cer.py ...`) that recomputes the figure.
+
+A caveat in the spirit of honesty: this is one passage, not a corpus-wide benchmark, and the reference is a different edition, so the true figure is a conservative one. Apparatus lines and more degraded scans will score worse. The point is the order of magnitude — and that roughly half the residual error is a small, systematic, post-correctable class (dropped breathings on sentence-initial capitals), not random character confusion.
 
 ## Quickstart
 
