@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "sh .claude/hooks/session_start.sh",
+        "timeout": 10
+      }
+    ]
+  }
+}

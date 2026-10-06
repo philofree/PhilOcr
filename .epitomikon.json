@@ -1,0 +1,19 @@
+{
+  "schema_version": "epitomikon/document-contract/v1",
+  "adoption_revision": "a8420c9568d86356a0d09a288007e4379c1ee160",
+  "operational_roots": [
+    ""
+  ],
+  "product_roots": [],
+  "generated_roots": [
+    "NOW.md"
+  ],
+  "chronicle_roots": [
+    "work_reports"
+  ],
+  "excluded_roots": [],
+  "entrypoints": [
+    "CLAUDE.md",
+    ".kimi/posture.md"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'{{REPO_ROOT}}/.claude/hooks/posture_check.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}

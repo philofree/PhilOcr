@@ -51,7 +51,7 @@ func lab(t *testing.T, roster Roster, mainSrc string) string {
 	mustWrite(t, filepath.Join(root, "internal", "kit", "kit.go"),
 		"package kit\n\ntype Handle struct{}\n")
 	mustWrite(t, filepath.Join(root, DoctrineFile),
-		"# Capability port\n\ndriver, port, adapter. Roster: "+RosterFile+"\n")
+		"# Capability port\n\ndriver, port, adapter, product. Roster: "+RosterFile+"\n")
 	data, err := json.Marshal(roster)
 	if err != nil {
 		t.Fatal(err)
@@ -161,8 +161,14 @@ func TestGoesRedWhenDoctrineIsGone(t *testing.T) {
 
 func TestRefusesAnEmptyRoster(t *testing.T) {
 	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, RosterFile), `{"clis":[]}`)
+	mustWrite(t, filepath.Join(root, RosterFile), `{"clis":[],"product":[]}`)
 	wantErr(t, root, "refusing a clean pass over an empty roster")
+}
+
+func TestRefusesARosterWithNoProductKey(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, RosterFile), `{"clis":[{"entry":"x","runners":[]}]}`)
+	wantErr(t, root, `no "product" list`)
 }
 
 // A consistent repo must pass, or every red above proves nothing.
@@ -233,4 +239,34 @@ func TestFlagArgSwitchIsACommand(t *testing.T) {
 	r := oneRunner("serve", "issued", "kit.Handle", "internal/kit/kit.go")
 	root := lab(t, r, flagArgMain)
 	wantErr(t, root, `dispatches "audit" with no row`)
+}
+
+func TestProductInstrumentIsRefused(t *testing.T) {
+	r := oneRunner("serve", "instrument", "", "internal/kit/kit.go")
+	r.CLIs[0].Runners = append(r.CLIs[0].Runners,
+		Runner{Command: "audit", Disposition: "instrument", Driver: "internal/kit/kit.go"})
+	r.Product = []ProductCapability{{
+		Name:        "scan",
+		Disposition: "instrument",
+		Port:        "scan_area.ManualScanArea",
+		Driver:      "src/philocr/models/scan_area.py",
+	}}
+	root := lab(t, r, twoCommandMain)
+	wantErr(t, root, `product "scan" is "instrument"`)
+}
+
+func TestProductIssuedRequiresTheClass(t *testing.T) {
+	r := oneRunner("serve", "instrument", "", "internal/kit/kit.go")
+	r.CLIs[0].Runners = append(r.CLIs[0].Runners,
+		Runner{Command: "audit", Disposition: "instrument", Driver: "internal/kit/kit.go"})
+	r.Product = []ProductCapability{{
+		Name:        "scan",
+		Disposition: "issued",
+		Port:        "scan_area.ManualScanArea",
+		Driver:      "src/philocr/models/scan_area.py",
+	}}
+	root := lab(t, r, twoCommandMain)
+	mustWrite(t, filepath.Join(root, "src/philocr/models/scan_area.py"),
+		"class Other:\n    pass\n")
+	wantErr(t, root, "class ManualScanArea is not declared")
 }

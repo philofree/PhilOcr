@@ -48,19 +48,34 @@ check: `/baptise`. This repo's vocabulary join is `PREDICATES.json`.
 
 ## The language law
 
-**Go is the production and tooling spine.** New code and new tooling are
-Go. Python only where no viable Go tool exists — isolated at the edge,
-never the spine. Existing Python is a porting obligation, not a licence
-to mint more. Shell only for hook scripts (they must fire on a fresh
-clone with nothing built).
+**Python is the product spine.** Application code is Python. Before work
+is complete it passes:
 
-Rationale: one language keeps the verification bar uniform (`make build &&
-make test && make lint`) and the toolchain self-contained (`tools/agentctl`
-travels with every repo seeded from the template). Family law:
-`../eukoine/docs/governance/canonical_design_principles.md`
-EKDP-025 — cite; do not restate. Campaign form:
-`campaigns/forms/go_static_quality/` (copy onto the live graph; this
-seed's `campaigns/graph.yaml` stays empty).
+- `ruff check src/`
+- Black at 88 columns, and isort on the Black profile
+- `python -m pyright src/`
+- `python -m pytest tests/`
+- `python guardians/run_all_guardians.py --root .` when `guardians/` is
+  present in the working tree
+
+**Go is the house toolchain.** `tools/agentctl` and the Eustratikon tool
+pinned in `go.mod` verify the agent surfaces, the campaign graph, and the
+predicate registry. They are not the application. New product behaviour is
+not written in Go. This repository has no `cmd/` program. The campaign
+form `go_static_quality` is not enqueued here.
+
+**Shell** is for hook scripts, which must run on a fresh clone with
+nothing built.
+
+Family law: `../eukoine/docs/governance/canonical_design_principles.md`
+EKDP-025 — cite; do not restate. A repository with no Go product keeps the
+Python bar. This repository is not an enrolled member. The citation is the
+bar. It does not enrol PhilOcr.
+
+House Go under `tools/` is held to `gofmt`, `go vet`, and `staticcheck` by
+`make lint`. That command does not type-check the Python application.
+`make test` runs `go test ./tools/agentctl/...`. `make pytest` is the
+product.
 
 ## The vocabulary law
 

@@ -1,0 +1,73 @@
+# gov_sweep/assessment/v1 — commensurable sweep artefact (Epitomikon-shaped).
+# Owner: .claude/skills/gov-sweep/SKILL.md (synced; never hand-edited in a mirror).
+#
+# Separation (do not collapse):
+#   observation  — narrow, locatable claim a span supports
+#   assessment   — verdict (a verbal explanation, never a score) + disposition + grain verdict
+#   campaign_row — a graph node under the same grain test
+#   layer_row    — one of the eight pointing layers; ALL eight must appear
+#                  (see references/layer_alignment.md). A missing layer_id
+#                  means the pass was not run.
+#
+# grain_verdict: collapse | elimination | preservation | neutral
+#   collapse     — two tokens merged; unlike particulars under one sign
+#   elimination  — a token gone (grain_elimination). NOT a type gone
+#                  (that is census_verdict / population_elimination)
+#   preservation — each token still that token; the cite names where it is held
+#   neutral      — no grain finding; other disease only
+#
+# disposition: integrate | retire | rewrite | preserve | preserve-as-chronicle | refuse | defer | skip
+#   preserve              examined at this grain and found sound: no cut, authority intact.
+#                         Distinct from skip (not examined at this grain) and from
+#                         preserve-as-chronicle (history kept, claim to current authority
+#                         removed). Added 2026-09-03: the first hub pass had four findings
+#                         of this kind and no word for them, and a reader forced to choose
+#                         between "not looked at" and "no longer authoritative" reports
+#                         neither of the things it found.
+#   skip on layer_row     lawful absence only (empty graph with no handover;
+#                         a seed whose product is the seed). Requires skip_reason.
+#                         "Did not look" is not skip — that is a missing row.
+# probe: restatement | authority | relay | purpose-orphan | grain_pair | campaign_scope | navigation | layer_alignment
+#   layer_alignment — a layer_row with points_at_telos false or n/a.
+#                     Not a new regulated variable.
+
+schema_version: gov_sweep/assessment/v1
+lexicon_cite: .eukoine/predicate_lexicon.yaml
+signifiers:
+  collapse: grain_collapse
+  elimination: grain_elimination
+  preservation: grain_preservation
+  procedure: gov_sweep
+  variable: governing_document_restatement
+  population_elimination: population_elimination
+
+# Closed vocabulary. Exactly these eight, each once, every pass, every repo.
+layer_ids:
+  - telos
+  - product_law
+  - agent_door
+  - orientation_readme
+  - live_orientation
+  - roster
+  - issued_capability
+  - neighbours
+
+# points_at_telos: true | false | n/a
+#   true  — this layer names the same job as docs/PURPOSE.md § Say it to a nine-year-old
+#   false — names a different job (leftover, split, closed wait, retired neighbour)
+#   n/a   — layer lawfully absent; disposition MUST be skip; skip_reason required
+
+required_fields:
+  observation: [id, repo_id, path, probe, evidence]
+  assessment: [id, observation_ids, grain_verdict, disposition, owner_target]
+  campaign_row: [graph_id, status, owner_path, regulator, grain_verdict, grain_preserving, disposition]
+  layer_row: [layer_id, path, job_stated, points_at_telos, verbal_explanation, disposition]
+# regulator:        {id, regulated_variable, owner} — copied from the target's campaigns/regulators/<id>.yaml
+# grain_preserving: true | false | n/a — does the regulated variable hold unlike particulars distinct?
+# layer_row.path:   resolved locator path, or "" when points_at_telos is n/a
+# layer_row.skip_reason: required when disposition is skip
+
+# Completeness: len(layer_row) == 8 AND set(layer_row.layer_id) == set(layer_ids).
+# Extra, missing, or duplicate layer_id: the pass is not a pass.
+
+artifacts: []

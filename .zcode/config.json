@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "enabled": true,
+    "events": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": ".claude/hooks/session_start.sh",
+              "timeoutMs": 5000
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": ".claude/hooks/posture_check.sh",
+              "timeoutMs": 5000
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

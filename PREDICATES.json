@@ -1,0 +1,45 @@
+{
+  "_doc": "The predicate registry — this repo's baptised vocabulary. Audited by `go run ./tools/agentctl verify` and `go test ./...`. This is the linguistic half of referent conservation: capability_port.md protects the identity of DATA across a boundary; this file protects the identity of WORDS. The same four operations break both.",
+
+  "artefact_kind": "predicate_registry",
+
+  "family_law": "../eukoine/.eukoine/predicate_vocabulary.md",
+  "family_registry": "../eukoine/.eukoine/predicate_lexicon.yaml",
+  "_family_note": "Authoritative, and it obliges every family repo: consult before coining, use the canonical term verbatim, on correction delete the wrong word, cite the path rather than restating entries. Mint here ONLY a referent that is genuinely suite-local and absent from the family registry. A second copy of a family entry is drift, not thoroughness.",
+
+  "rules": {
+    "one_signifier_one_referent": "One signifier, one referent. Two words for one thing is aliasing; one word for two things is equivocal polysemy. Both are forbidden.",
+    "on_correction_delete": "On correction, DELETE the wrong word — never add a synonym beside it. A synonym left standing is an addition with no retirement: liquefaction at the level of language (docs/ROT.md).",
+    "consult_before_coin": "Consult the family registry before coining any code signifier — class, field, JSON key, CLI flag, schema name, or technical prose noun.",
+    "identity_breaks": "Mutation, re-derivation, aliasing and equivocal polysemy are forbidden on predicates exactly as they are on data crossing a port (.claude/skills/cut/references/capability_port.md)."
+  },
+
+  "_baptisms_note": "Suite-local referents only. A seeded repo fills this for its domain. The template itself mints only the seed-mechanics term package_dir — a referent the family registry does not bind.",
+  "baptisms": {
+    "package_dir": "Sanitized filesystem directory name used as cmd/<package_dir>/ and as the default Go module-path basename when seeding a repo from this template. Not an identity key.",
+    "document_contract": "The universal rules that identify a document's lawful carrier, current authority relationship, and prospective adoption boundary without turning observations into a gate.",
+    "document_contract_projection": "A source-identified installation of contract-owned files into an existing repository that refuses to overwrite local divergence.",
+    "adoption_revision": "The Git baseline after which new or subsequently changed operational documents are governed by the document contract."
+  },
+
+  "_banned_note": "A retired signifier, with the word that replaced it. `pattern` is a Go regexp; `unless` lists substrings whose presence on the line makes the hit lawful (a longer compound that legitimately contains the retired word).",
+  "banned": [
+    {
+      "id": "slug",
+      "pattern": "(?i)slug",
+      "replacement": "package_dir (cmd directory / default module basename); topic (work-report filename fragment)",
+      "unless": ["package_dir"]
+    }
+  ],
+
+  "_wire_debt_note": "A place where code still emits a retired signifier, named with the work that will remove it. Named debt is not a baptism, and it is not an exemption — it is a retirement with a date attached.",
+  "wire_debt": {},
+
+  "_exempt_paths_note": "Paths the audit does not scan: history, the registry itself (which must quote the retired words in order to ban them), and the test that proves the family-registry cross-check by quoting the retired family entry.",
+  "exempt_paths": [
+    "PREDICATES.json",
+    "work_reports/",
+    "docs/DECISIONS.md",
+    "tools/agentctl/predicatecmd/predicate_test.go"
+  ]
+}

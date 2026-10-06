@@ -113,6 +113,11 @@ test_files/
 !manifest.json
 !capability_ports.json
 !PREDICATES.json
+!.epitomikon.json
+!.claude/settings.json
+!.cursor/hooks.json
+!.codex/hooks.json
+!.zcode/config.json
 *.docx
 *.html
 !index.html
@@ -125,18 +130,14 @@ json_files/
 # Local datasets
 translations/*.xlsx
 
-# Private infrastructure — canonical copy lives in PhilOcr-private repo
+# Guardians and session reports stay in this working tree and out of the
+# public history. The agent house (.claude, skills, design/) is tracked.
 guardians/
 work_reports/
-.cursor/
-.claude/*
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/eukrinikon/
-!.claude/skills/cold-reading/
-!.claude/skills/verify/
-design/
 rules_*.yaml
 RULES_OVERVIEW.md
 .pre-commit-guardians.py
 framework/
+
+# House toolchain binary
+/bin/

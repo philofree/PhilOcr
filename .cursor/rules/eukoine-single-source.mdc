@@ -1,0 +1,18 @@
+---
+description: Family .eukoine/ is a synced mirror — cite WRITE_ACCESS.md; never hand-edit
+globs:
+alwaysApply: true
+---
+
+# `.eukoine/` single source
+
+When this repository is a family member, `.eukoine/` is a **synced
+mirror** of the hub canonical copy. Read it freely. Cite it by path.
+Do not summarise, restate, or re-derive its contents in any other file.
+
+How the spec changes is owned at
+[`../eukoine/.eukoine/WRITE_ACCESS.md`](../../../eukoine/.eukoine/WRITE_ACCESS.md)
+— cite that path; do not copy it here. Unlock → edit the **hub** → sync
+→ lock. A hand-edit of a member mirror is drift.
+
+Coin-time check: `/baptise`. Join in this repo: `PREDICATES.json`.

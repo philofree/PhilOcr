@@ -52,8 +52,19 @@ type CLI struct {
 	NotCapabilities []string `json:"not_capabilities,omitempty"`
 }
 
+// ProductCapability is one PhilOcr product guarantee. Disposition is
+// closed on issued: a refactor that has not issued a port is not on
+// this list.
+type ProductCapability struct {
+	Name        string `json:"name"`
+	Disposition string `json:"disposition"`
+	Port        string `json:"port"`
+	Driver      string `json:"driver"`
+}
+
 type Roster struct {
-	CLIs []CLI `json:"clis"`
+	CLIs    []CLI               `json:"clis"`
+	Product []ProductCapability `json:"product"`
 }
 
 var validDisposition = map[string]bool{
@@ -74,6 +85,12 @@ func Check(root string) []string {
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return []string{fmt.Sprintf("%s does not parse: %v", RosterFile, err)}
 	}
+	if !strings.Contains(string(raw), `"product"`) {
+		return []string{fmt.Sprintf(
+			"%s has no \"product\" list — a product refactor names an issued port",
+			RosterFile,
+		)}
+	}
 	if len(r.CLIs) == 0 {
 		return []string{fmt.Sprintf("%s lists no CLIs — refusing a clean pass over an empty roster", RosterFile)}
 	}
@@ -81,6 +98,7 @@ func Check(root string) []string {
 	for _, c := range r.CLIs {
 		errs = append(errs, checkCLI(root, c)...)
 	}
+	errs = append(errs, checkProduct(root, r.Product)...)
 	errs = append(errs, checkDoctrine(root)...)
 	return errs
 }
@@ -284,6 +302,76 @@ func checkPortDeclared(root, port string) string {
 	return ""
 }
 
+// checkProduct enforces the PhilOcr binding: a product row is issued, or
+// it is not a row. The class named by port is declared in the driver file.
+func checkProduct(root string, rows []ProductCapability) []string {
+	var errs []string
+	seen := map[string]bool{}
+	for _, row := range rows {
+		if row.Name == "" {
+			errs = append(errs, fmt.Sprintf("%s: a product row has no name", RosterFile))
+			continue
+		}
+		if seen[row.Name] {
+			errs = append(errs, fmt.Sprintf("%s: product %q is rostered twice", RosterFile, row.Name))
+		}
+		seen[row.Name] = true
+		if row.Disposition != "issued" {
+			errs = append(errs, fmt.Sprintf(
+				"%s: product %q is %q — a product refactor is an issued port, or it is refused",
+				RosterFile, row.Name, row.Disposition,
+			))
+			continue
+		}
+		module, class, ok := strings.Cut(row.Port, ".")
+		if !ok || module == "" || class == "" || strings.Contains(class, ".") {
+			errs = append(errs, fmt.Sprintf(
+				"%s: product %q port %q must be module.Class",
+				RosterFile, row.Name, row.Port,
+			))
+			continue
+		}
+		driver := filepath.Join(root, filepath.FromSlash(row.Driver))
+		body, err := os.ReadFile(driver)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf(
+				"%s: product %q driver %s is missing (%v)",
+				RosterFile, row.Name, row.Driver, err,
+			))
+			continue
+		}
+		stem := strings.TrimSuffix(filepath.Base(row.Driver), ".py")
+		if stem != module || !strings.HasSuffix(row.Driver, ".py") || !strings.HasPrefix(filepath.ToSlash(row.Driver), "src/") {
+			errs = append(errs, fmt.Sprintf(
+				"%s: product %q driver %s must be src/<path>/%s.py",
+				RosterFile, row.Name, row.Driver, module,
+			))
+			continue
+		}
+		if !pythonClassDeclared(string(body), class) {
+			errs = append(errs, fmt.Sprintf(
+				"%s: product %q port %s — class %s is not declared in %s",
+				RosterFile, row.Name, row.Port, class, row.Driver,
+			))
+		}
+	}
+	return errs
+}
+
+func pythonClassDeclared(src, class string) bool {
+	needle := "class " + class
+	for _, line := range strings.Split(src, "\n") {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, needle) {
+			rest := strings.TrimPrefix(trim, needle)
+			if rest == "" || rest == ":" || strings.HasPrefix(rest, "(") || strings.HasPrefix(rest, ":") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // checkDoctrine keeps the prose and the roster tied together. Doctrine that
 // does not point at its enforcement is doctrine nothing holds to.
 func checkDoctrine(root string) []string {
@@ -294,7 +382,7 @@ func checkDoctrine(root string) []string {
 	}
 	text := string(data)
 	var errs []string
-	for _, must := range []string{RosterFile, "driver", "port", "adapter"} {
+	for _, must := range []string{RosterFile, "driver", "port", "adapter", "product"} {
 		if !strings.Contains(text, must) {
 			errs = append(errs, fmt.Sprintf("%s never mentions %q", DoctrineFile, must))
 		}

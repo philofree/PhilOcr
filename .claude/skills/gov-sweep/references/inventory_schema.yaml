@@ -1,0 +1,45 @@
+# gov_sweep/inventory/v1 — the fleet inventory schema: ONE home for the
+# extra-class globs. Rows live in the fleet manifest on
+# betalytes_external_check (campaigns/gov-sweep/inventory.yaml).
+# Owner: .claude/skills/gov-sweep/SKILL.md (synced; never hand-edited in a mirror).
+schema_version: gov_sweep/inventory/v1
+
+# Enumeration is DERIVED per repo, never hand-listed:
+#   Epitomikon profile documents  ∪  git ls-files -- ':(glob)<each glob below>'
+# Hand-set per row: disposition, owner_target. Nothing else.
+#   disposition:  pending | integrate | retire | rewrite | preserve | preserve-as-chronicle | refuse | deferred | skip
+#                 preserve = examined and sound; see references/assessment_schema.yaml for the sense
+#   owner_target: a repository-relative path
+# surface_class is the ENTRY MECHANISM — never one word over unlike things:
+#   document             anything the Epitomikon profile discovered (incl. SKILL.md, .mdc, .kimi/posture.md)
+#   git_hook             entered by git or the harness running a script
+#   tool_read_registry   read by a tool (Eustratikon, agentctl, capability roster)
+#   test_read_registry   read by a test (predicate, anti-pattern, doctrine registers)
+#   live_state           entered by session orientation (HANDOVER, NOW)
+# gc_present / gp_present: computed by grep over the lexicon's signifier_form,
+#   on the document class only; other classes refuse the column.
+
+extra_class_globs:
+  git_hook:
+    - .claude/hooks/**
+    - .codex/hooks/**
+    - .cursor/hooks/**
+    - .kimi/hooks/**
+    - .githooks/**
+  tool_read_registry:
+    - campaigns/graph.yaml
+    - campaigns/regulators/*.yaml
+    - campaigns/*/campaign.yaml
+    - capability_ports.json
+    - docs/governance/*.yaml
+  live_state:
+    - HANDOVER_*.md
+    - NOW.md
+  test_read_registry:
+    - PREDICATES.yaml
+    - PREDICATES.json
+    - ANTI_PATTERNS.yaml
+    - ABERRATIONS.yaml
+    - doctrine/*.yaml
+
+# The repo list is derived from the hub manifest's [mirrors]. No second roster.

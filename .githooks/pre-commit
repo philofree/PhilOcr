@@ -1,0 +1,15 @@
+#!/bin/sh
+# pre-commit refuses to install while core.hooksPath is set, so the
+# generated hook stays in .git/hooks. Git, with the parsimony gate armed,
+# only runs .githooks. This wrapper calls the generated hook so Ruff,
+# Black, isort, and Pyright still see the staged files.
+set -eu
+root=$(git rev-parse --show-toplevel)
+hook="$root/.git/hooks/pre-commit"
+if [ -x "$hook" ]; then
+  exec "$hook" "$@"
+fi
+echo "PhilOcr: $hook is missing or not executable." >&2
+echo "Install it with core.hooksPath unset, then set the path back:" >&2
+echo "  git config --unset-all core.hooksPath && pre-commit install && git config --local core.hooksPath .githooks" >&2
+exit 1

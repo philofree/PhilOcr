@@ -1,5 +1,5 @@
 {
-  "_doc": "The capability issuance roster. Doctrine: .claude/skills/cut/references/capability_port.md. Join: go run ./tools/agentctl verify (and go test ./...). Every command a CLI dispatches MUST appear here with an honest disposition, and every row here must dispatch. An unnamed capability is a capability nobody owns. The Python application (src/philocr/main.py) is not a dispatched CLI and has no row here.",
+  "_doc": "The capability issuance roster. Doctrine: .claude/skills/cut/references/capability_port.md. Join: go run ./tools/agentctl verify (and go test ./tools/agentctl/...). Every command a CLI dispatches MUST appear here with an honest disposition, and every row here must dispatch. product is the PhilOcr application: a row there is issued, with a Python class declared in its driver, or the join goes red. An empty product list means no product capability has been cut over yet.",
 
   "_dispositions": {
     "issued": "a typed port exists that consumers hold; name it in `port` and the file that owns it in `driver`",
@@ -42,5 +42,6 @@
       ],
       "not_capabilities": ["help", "-h", "--help"]
     }
-  ]
+  ],
+  "product": []
 }

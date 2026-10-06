@@ -1,0 +1,15 @@
+---
+description: Read CLAUDE.md before any work in this repository
+globs:
+alwaysApply: true
+priority: critical
+---
+
+# Read the authority first
+
+[`CLAUDE.md`](../../CLAUDE.md) is the authority for agent work here. Load it
+before proposing changes — especially the routing table ("Where to look")
+and the settled stances.
+
+Skills: [`.cursor/skills/`](../skills/) → `.claude/skills/`. Owner:
+[CLAUDE.md § The assistant fleet](../../CLAUDE.md).

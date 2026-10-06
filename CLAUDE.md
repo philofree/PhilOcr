@@ -108,6 +108,13 @@ Owner: [`docs/GOVERNANCE.md`](docs/GOVERNANCE.md) § The language law.
   in `capability_ports.json` is rot and fails `agentctl verify`. The
   application entry `src/philocr/main.py` is not a dispatched CLI and has
   no row.
+- **A product refactor is a capability-port cutover.** One driver, one
+  typed Python port, adapters that cannot decide the answer, and every
+  previous route deleted in the same change. The `product` row is
+  `issued`. `instrument`, a compatibility wrapper, a flag that keeps the
+  old path, and a menu of shapes are refused. Owner:
+  `.claude/skills/cut/references/capability_port.md` § PhilOcr product
+  binding.
 - **One signifier, one referent**, and on correction the wrong word is
   deleted, not shadowed by a synonym. Held by `PREDICATES.json`; coin-time
   check is `/baptise`.
@@ -139,9 +146,9 @@ Owner: [`docs/GOVERNANCE.md`](docs/GOVERNANCE.md) § The language law.
   unproved. (`/adversarial`)
 - **Default direction is subtractive**, and it is enforced. (`/cut`,
   `docs/ROT.md` § The parsimony contract)
-- **Name the capability before you build it.** Driver, port, adapters —
-  and a row in `capability_ports.json` when the capability is a command
-  `agentctl` dispatches.
+- **Name the capability before you build it.** A product refactor issues
+  a port (`capability_port.md` § PhilOcr product binding). A house command
+  still needs a row in `capability_ports.json`.
 - **Sessions reconcile.** (`/close`, `/log`)
 - **No invented live state.** An empty graph has no live handover and no
   `NOW.md`. Once a real frontier exists, keep exactly one
