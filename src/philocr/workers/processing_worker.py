@@ -149,10 +149,6 @@ class ProcessingWorker(QThread):
             else:
                 self._process_single_delegated(rate_limiter)
 
-            # Clean up any temporary files
-            if self.temp_file_manager.temp_cleaner:
-                self.temp_file_manager.temp_cleaner.clean_registered_files()
-
             self.finished_signal.emit(True)
 
         except (PDFProcessingError, PDFParseError, WorkerError) as e:
@@ -172,8 +168,6 @@ class ProcessingWorker(QThread):
                 error_type=type(e).__name__,
                 exc_info=True,
             )
-            from philocr.utils.logging_config import flush_loggers
-
             flush_loggers()
             worker_error = WorkerError(f"Unexpected error during processing: {e}")
             self.error_signal.emit(str(worker_error))
@@ -395,11 +389,10 @@ class ProcessingWorker(QThread):
                         error=str(e),
                         exc_info=True,
                     )
-                    from philocr.utils.logging_config import flush_loggers
-
                     flush_loggers()
                     raise WorkerError(
-                        f"CRITICAL: Batch pipeline file processing failed for {file_name} - {e}"
+                        "CRITICAL: Batch pipeline file processing failed for "
+                        f"{file_name} - {e}"
                     ) from e
 
             # Finalize batch results using result processor
@@ -549,8 +542,6 @@ class ProcessingWorker(QThread):
                         error_type=type(e).__name__,
                         exc_info=True,
                     )
-                    from philocr.utils.logging_config import flush_loggers
-
                     flush_loggers()
                     raise WorkerError(
                         f"CRITICAL: Unexpected error processing {file_name} - {e}"

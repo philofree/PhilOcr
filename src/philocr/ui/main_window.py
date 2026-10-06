@@ -336,6 +336,8 @@ class MainWindow(QMainWindow):
             has_json=has_json,
             current_json=self.current_result_json,
         )
+        if success:
+            self.lifecycle_manager.cleanup_temp_files()
 
     def closeEvent(self, event: QCloseEvent) -> None:  # type: ignore[override]
         """Handle the window close event. Clean up resources.
@@ -344,8 +346,6 @@ class MainWindow(QMainWindow):
             event: Close event
         """
         self.lifecycle_manager.on_window_close(event)
-
-
 
     def debug_markdown(self) -> None:
         """Run a debug test of the markdown conversion directly from the UI."""
@@ -372,4 +372,3 @@ class MainWindow(QMainWindow):
             )
         elif result.error_message:
             self.show_error(result.error_message)
-

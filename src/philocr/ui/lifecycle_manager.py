@@ -6,13 +6,13 @@ temp file cleanup and window close operations.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from PyQt6.QtGui import QCloseEvent
-
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import structlog
+    from PyQt6.QtGui import QCloseEvent
 
     logger: structlog.BoundLogger
 else:
@@ -39,6 +39,7 @@ class LifecycleManager:
             temp_cleaner: Temporary file cleaner instance
             on_status_update: Callback for status updates
         """
+        super().__init__()
         self.temp_cleaner = temp_cleaner
         self.on_status_update = on_status_update
 
@@ -57,9 +58,5 @@ class LifecycleManager:
         Args:
             event: Close event
         """
-        if self.temp_cleaner:
-            cleaned, _failed = self.temp_cleaner.clean_registered_files()
-            if cleaned > 0:
-                logger.info("temp_files_cleaned_on_exit", files_cleaned=cleaned)
-
+        self.cleanup_temp_files()
         event.accept()

@@ -5,6 +5,10 @@ skip-string-normalization = false
 [tool.isort]
 profile = "black"
 line_length = 88
+known_first_party = ["philocr"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["philocr"]
 
 [tool.ruff]
 line-length = 88

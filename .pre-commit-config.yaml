@@ -32,7 +32,7 @@ repos:
         entry: venv/bin/python scripts/pyright_warnings_errors.py
         language: system
         types: [python]
-        pass_filenames: false
+        pass_filenames: true
         args: []
         exclude: ^(venv|\.venv|venv\.|venv\.backup.*|ENV|env|\.env)/
         always_run: false

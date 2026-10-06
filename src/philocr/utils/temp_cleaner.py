@@ -65,7 +65,8 @@ class TempFileCleaner:
                     logger.debug("temp_file_cleaned", file_path=file_path)
                     cleaned_count += 1
                 self.temp_files.remove(file_path)
-            except Exception as e:
+            except OSError as e:
+                failed_count += 1
                 logger.error(
                     "temp_file_clean_failed",
                     file_path=file_path,
@@ -73,12 +74,8 @@ class TempFileCleaner:
                     error_type=type(e).__name__,
                     exc_info=True,
                 )
-                from philocr.utils.logging_config import flush_loggers
-
-                flush_loggers()
-                raise RuntimeError(
-                    f"CRITICAL: Temp file clean failed for {file_path} - {e}"
-                ) from e
+                if file_path in self.temp_files:
+                    self.temp_files.remove(file_path)
 
         logger.info(
             "temp_files_cleaned_summary",
