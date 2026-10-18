@@ -1,8 +1,8 @@
-# How this template works — the dummy's guide
+# How work runs here — plain words
 
 | | |
 |---|---|
-| **Title** | dummies_guide/how_this_template_works.md — the whole kit in plain words |
+| **Title** | plain_words/how_agent_work_runs_here.md — the whole kit in plain words |
 | **Status** | Explanatory — this file binds nothing |
 | **Authority level** | none — it carries no rule of its own |
 | **Scope** | Anyone meeting this folder for the first time |
