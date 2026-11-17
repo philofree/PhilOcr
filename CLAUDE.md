@@ -59,7 +59,7 @@ average between them, never quietly pick one.
 | Why was X decided? | `docs/DECISIONS.md` | Re-deriving the reasoning |
 | How is a doc written here? | `docs/GOVERNANCE.md` | Freeform prose |
 | What language is new work in? | `docs/GOVERNANCE.md` § The language law | Restating Python / Go / Shell here |
-| The whole kit, in plain words | `dummies_guide/how_this_template_works.md` | Re-deriving the loop from CLAUDE.md |
+| The whole kit, in plain words | `plain_words/how_agent_work_runs_here.md` | Re-deriving the loop from CLAUDE.md |
 | How do the agent surfaces sync? | this file § The assistant fleet | Editing a symlink farm by hand |
 | Rot / liquefaction in **Python** tissue? | [`go run ./tools/agentctl eukrinikon`](tools/agentctl/eukrinikoncmd/eukrinikon.go), [`make eukrinikon`](Makefile), [`.claude/skills/eukrinikon/`](.claude/skills/eukrinikon/SKILL.md); axes [`../eukrinikon/README.md`](../eukrinikon/README.md); instrument [`../eukrinikon_python`](../eukrinikon_python) | Hand-auditing ownership splits; confusing EuKrinikon with guardians or pytest |
 | Go-repo structural read? | sibling `../eukrinikon` (Go instrument) | Pointing PhilOcr agents at the wrong language port |

@@ -2,16 +2,15 @@
 
 | | |
 |---|---|
-| **Title** | docs/DECISIONS.md — owner rulings, append-only |
-| **Status** | Chronicle (never edited, only appended) |
+| **Title** | docs/DECISIONS.md — owner rulings, pruned on amendment |
+| **Status** | concise record of fixed rules with no chronicle |
 | **Authority level** | 4 — explains the rules above it; carries none of its own |
 | **Scope** | Every ruling that settled a question |
 | **Relationship-to** | Rulings land here; their one-line outcome lands in CLAUDE.md § Settled stances |
 | **Document class** | chronicle |
 | **Contract** | `epitomikon/document-contract/v1` |
 
-Append-only. Entries are never edited or reordered — a superseded ruling is
-superseded by a new entry, not by rewriting history.
+History is rewritten on every entry.
 
 ## Format
 

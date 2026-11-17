@@ -143,7 +143,7 @@ an adversarial pass that is different in every repository.
 - [`docs/PURPOSE.md`](../../../docs/PURPOSE.md) — the telos (authority
   level 0, above CLAUDE.md). § *Say it to a nine-year-old* already
   carries question 1: *does what I am about to do still serve this?*
-- [`dummies_guide/how_this_template_works.md`](../../../dummies_guide/how_this_template_works.md)
+- [`plain_words/how_agent_work_runs_here.md`](../../../plain_words/how_agent_work_runs_here.md)
   — the kit in plain words
 
 **An adversary that has not read those cannot answer question 1.** It
